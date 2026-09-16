@@ -464,6 +464,63 @@ kbd {
   border-radius: 5px;
 }
 
+.quality-panel {
+  position: absolute;
+  bottom: 132px;
+  left: 22px;
+  width: 220px;
+  padding: 11px 13px;
+  border: 1px solid rgba(243, 231, 203, 0.18);
+  border-radius: 4px;
+  background: linear-gradient(130deg, rgba(24, 26, 23, 0.9), rgba(38, 39, 32, 0.72));
+  box-shadow: 0 10px 28px rgba(14, 16, 14, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.quality-tier {
+  margin-top: 5px;
+  color: var(--brass);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+}
+
+.quality-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.quality-metrics b,
+.quality-metrics small {
+  display: block;
+}
+
+.quality-metrics b {
+  color: var(--paper);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.quality-metrics small,
+.quality-foot {
+  color: var(--muted);
+  font-size: 7px;
+  letter-spacing: 0.12em;
+}
+
+.quality-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
 .selection-portrait {
   gap: 11px;
 }

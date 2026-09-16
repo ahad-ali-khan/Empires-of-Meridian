@@ -11,6 +11,11 @@ type RendererLike = {
   setSize: (width: number, height: number, updateStyle?: boolean) => void;
   render: (scene: THREE.Scene, camera: THREE.Camera) => void;
   dispose: () => void;
+  info?: {
+    render?: { calls?: number; triangles?: number };
+    memory?: { textures?: number };
+    reset?: () => void;
+  };
 };
 
 const createRenderer = async (
@@ -74,6 +79,7 @@ const createHud = (): HTMLElement => {
     '  <div class="selection-stats"><span><b>100%</b><small>HEALTH</small></span><span><b>READY</b><small>STATUS</small></span><span><b>FRONTIER</b><small>ERA</small></span></div>',
     '  <div class="command-grid" aria-label="Command preview"><button type="button" aria-label="Build">⌂</button><button type="button" aria-label="Gather">✥</button><button type="button" aria-label="Repair">⟲</button><button type="button" aria-label="More commands">···</button></div>',
     '</footer>',
+    '<aside class="quality-panel" aria-label="Visual quality diagnostics"><div class="eyebrow">VISUAL QUALITY</div><div class="quality-tier" data-quality-tier>HIGH</div><div class="quality-metrics"><span><b data-fps>--</b><small>FPS</small></span><span><b data-calls>--</b><small>DRAWS</small></span><span><b data-triangles>--</b><small>TRIS</small></span><span><b data-textures>--</b><small>TEX</small></span></div><div class="quality-foot"><span data-instances>45 INSTANCES</span><span data-shadows>SOFT SUN · 2048²</span></div></aside>',
     '<div class="controls-hint"><kbd>WASD</kbd> PAN <kbd>SCROLL</kbd> ZOOM <kbd>F1</kbd> HELP <span class="hint-divider"></span> PHASE 1 VISUAL TARGET</div>',
   ].join('');
   return hud;
@@ -92,14 +98,20 @@ const bootstrap = async (): Promise<void> => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const { scene, camera } = createScene();
-  scene.background = new THREE.Color(0x68786f);
-  scene.fog = new THREE.Fog(0x68786f, 13, 28);
+  scene.background = new THREE.Color(0x9eaa9b);
+  scene.fog = new THREE.Fog(0x9eaa9b, 22, 48);
   camera.position.set(12.5, 10.5, 14.5);
   camera.lookAt(0, 0.2, 0);
 
-  scene.add(new THREE.HemisphereLight(0xf3dec0, 0x26313b, 2.1));
-  const key = new THREE.DirectionalLight(0xffdca6, 3.2);
-  key.position.set(-6, 12, 7);
+  scene.add(new THREE.HemisphereLight(0xf4e8cb, 0x29414a, 1.75));
+  const key = new THREE.DirectionalLight(0xffd9a1, 3.8);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -18;
+  key.shadow.camera.right = 18;
+  key.shadow.camera.top = 18;
+  key.shadow.camera.bottom = -18;
+  key.position.set(-9, 15, 8);
   scene.add(key);
 
   const world = createNorthStarWorld();
@@ -108,6 +120,16 @@ const bootstrap = async (): Promise<void> => {
   app.append(hud);
   const backendLabel = hud.querySelector<HTMLElement>('[data-backend]');
   if (backendLabel) backendLabel.textContent = backend === 'webgpu' ? 'WEBGPU PATH' : 'WEBGL PATH';
+  const qualityTier = hud.querySelector<HTMLElement>('[data-quality-tier]');
+  const instanceLabel = hud.querySelector<HTMLElement>('[data-instances]');
+  const shadowLabel = hud.querySelector<HTMLElement>('[data-shadows]');
+  if (qualityTier) qualityTier.textContent = world.stats.qualityTier;
+  if (instanceLabel) instanceLabel.textContent = `${world.stats.instances} INSTANCES`;
+  if (shadowLabel) shadowLabel.textContent = world.stats.shadowSettings;
+  const fpsLabel = hud.querySelector<HTMLElement>('[data-fps]');
+  const callsLabel = hud.querySelector<HTMLElement>('[data-calls]');
+  const trianglesLabel = hud.querySelector<HTMLElement>('[data-triangles]');
+  const texturesLabel = hud.querySelector<HTMLElement>('[data-textures]');
 
   const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   let reducedMotion = reducedMotionQuery.matches;
@@ -134,9 +156,26 @@ const bootstrap = async (): Promise<void> => {
   resize();
 
   const started = performance.now();
+  let lastMetrics = started;
+  let frames = 0;
   const render = (now: number): void => {
     world.update((now - started) / 1000, reducedMotion);
     renderer.render(scene, camera);
+    frames += 1;
+    if (now - lastMetrics > 500) {
+      if (fpsLabel) fpsLabel.textContent = `${Math.round((frames * 1000) / (now - lastMetrics))}`;
+      const calls = renderer.info?.render?.calls;
+      const triangles = renderer.info?.render?.triangles;
+      if (callsLabel)
+        callsLabel.textContent = calls === undefined ? '--' : `${Math.round(calls / frames)}`;
+      if (trianglesLabel)
+        trianglesLabel.textContent =
+          triangles === undefined ? '--' : `${Math.round(triangles / frames)}`;
+      if (texturesLabel) texturesLabel.textContent = `${renderer.info?.memory?.textures ?? '--'}`;
+      renderer.info?.reset?.();
+      frames = 0;
+      lastMetrics = now;
+    }
     requestAnimationFrame(render);
   };
   requestAnimationFrame(render);
