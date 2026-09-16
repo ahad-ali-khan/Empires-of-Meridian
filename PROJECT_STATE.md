@@ -15,10 +15,10 @@ pending).
 - [x] `packages/protocol`, `packages/content`, and `packages/presentation` boundaries
       exist with minimal typed contracts.
 - [x] `apps/web` launches a local Three.js canvas with a WebGL renderer path.
-- [x] `pnpm build` passes (5 workspace builds; Vite warns that the initial Three.js
-      chunk is larger than 500 kB, to address during Phase 1 asset/code splitting).
+- [x] `pnpm build` passes (5 workspace builds; Vite still warns that the North Star
+      and WebGPU chunks are larger than 500 kB, tracked for measured optimization).
 - [x] `pnpm verify` passes: Prettier, ESLint, strict typecheck, 7 Turbo test tasks,
-      and one Playwright browser smoke test.
+      and five Playwright browser checks.
 - [x] Playwright Chromium 153.0.8010.12 is installed locally; smoke test passed in
       2.6 seconds with no page errors.
 - [x] Deterministic North Star semantic terrain fixture with grass, forest, rock, sand,
@@ -34,14 +34,14 @@ pending).
 
 - [x] Install/availability of the Playwright Chromium browser.
 - [x] `pnpm verify` (run after dependency install and first fixes).
-- [ ] WebGPU capability detection and explicit fallback benchmark.
+- [x] WebGPU capability detection and explicit WebGL fallback path; benchmark is pending.
 - [ ] Local Postgres/Redis services; Docker is not installed on this machine.
 - [ ] API, authoritative game server, and worker packages (deferred until a real
       consumer exists; no fake gameplay endpoints are being added in Phase 0).
 
-## Last verified commit
+## Last verified implementation commit
 
-`572531a06b69b207d5af5e5bee44fe4df3c1b6b5` — `chore: establish phase 0 foundation`
+`c6df70073ebcf018d51315c4f652d3df67e9e370` — `feat: build phase 1 visual north star`
 
 ## Known failures/blockers
 
