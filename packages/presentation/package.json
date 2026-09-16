@@ -6,6 +6,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./north-star": {
+      "types": "./src/north-star.ts",
+      "import": "./src/north-star.ts"
     }
   },
   "scripts": {

@@ -1,0 +1,97 @@
+{
+  "manifestVersion": 1,
+  "contentVersion": "0.1.0",
+  "assets": [
+    {
+      "id": "meridian-crest",
+      "kind": "svg",
+      "source": "repository",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "northstar-terrain",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "aurelian-central-hall",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "aurelian-settlement-house",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "aurelian-market-house",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "aurelian-field-cannon",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "meridian-worker",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "meridian-line-infantry",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "meridian-cavalry",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "meridian-fishing-boat",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "temperate-coast-trees",
+      "kind": "instanced-procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "meridian-wall-and-gate",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    },
+    {
+      "id": "weather-light-rain",
+      "kind": "procedural",
+      "source": "packages/presentation",
+      "license": "original",
+      "generated": true
+    }
+  ]
+}

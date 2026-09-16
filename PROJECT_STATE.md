@@ -2,8 +2,8 @@
 
 ## Current milestone
 
-Phase 0 — repository baseline and thin foundation (complete for the local track;
-service orchestration is intentionally deferred).
+Phase 1 — visual north star (implementation complete; visual/performance review gate
+pending).
 
 ## Verified
 
@@ -21,6 +21,14 @@ service orchestration is intentionally deferred).
       and one Playwright browser smoke test.
 - [x] Playwright Chromium 153.0.8010.12 is installed locally; smoke test passed in
       2.6 seconds with no page errors.
+- [x] Deterministic North Star semantic terrain fixture with grass, forest, rock, sand,
+      road, and shallow-water classes.
+- [x] Original procedural settlement kit: central hall, houses, cannon, workers,
+      infantry, cavalry, fishing boat, wall/gate, banners, trees, road, and rain.
+- [x] Original SVG Meridian crest/wordmark treatment and field-atlas HUD composition.
+- [x] WebGPU capability selection with WebGL fallback and explicit backend status.
+- [x] Local asset manifest and `/asset-preview.html` workshop route.
+- [x] Five browser checks pass across 1280×720, 1920×1080, ultrawide, and asset preview.
 
 ## Not yet verified
 
@@ -37,14 +45,17 @@ service orchestration is intentionally deferred).
 
 ## Known failures/blockers
 
-- Browser test will require a locally installed Playwright browser binary.
+- Phase 1 visual sign-off and renderer budget captures are still pending.
+- Vite reports a >500 kB North Star and WebGPU chunk; code splitting/asset budgets
+  need a measured follow-up.
 - Full API/game-server/worker/Postgres/Redis orchestration is deferred until a real
   consumer and a Docker runtime (or explicitly chosen local-service alternative) are
   available; no fake gameplay endpoints were added.
 
 ## Next three tasks
 
-1. Begin the Phase 1 visual north-star fixture: original crest/wordmark, semantic
-   temperate-coast scene, first asset kit, camera, and HUD composition.
-2. Add capability detection and a measured WebGPU/WebGL backend choice.
-3. Capture Phase 1 visual/performance evidence at all supported aspect ratios.
+1. Run the visual/performance review at supported aspect ratios and record sign-off.
+2. Add measured renderer budgets and reduce/split the >500 kB visual chunks where the
+   capture shows a real startup or memory problem.
+3. Begin Phase 2 game-feel lab: selection, camera motion, command feedback, and
+   deterministic combat sandbox.
