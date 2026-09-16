@@ -17,7 +17,9 @@ const createRenderer = async (
   canvas: HTMLCanvasElement,
 ): Promise<{ backend: Backend; renderer: RendererLike }> => {
   const browserWithGpu = navigator as Navigator & { gpu?: unknown };
-  if (browserWithGpu.gpu) {
+  const gpu = browserWithGpu.gpu as { requestAdapter?: () => Promise<unknown | null> } | undefined;
+  const adapter = gpu?.requestAdapter ? await gpu.requestAdapter() : null;
+  if (adapter) {
     try {
       const { WebGPURenderer } = await import('three/webgpu');
       const candidate = new WebGPURenderer({
