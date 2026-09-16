@@ -41,7 +41,7 @@ pending).
 
 ## Last verified implementation commit
 
-`c6df70073ebcf018d51315c4f652d3df67e9e370` — `feat: build phase 1 visual north star`
+`0746bbe` — `fix: report the active webgpu capability accurately`
 
 ## Known failures/blockers
 
