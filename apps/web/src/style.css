@@ -521,6 +521,18 @@ kbd {
   border-top: 1px solid var(--line);
 }
 
+.asset-debug {
+  display: grid;
+  gap: 4px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  line-height: 1.35;
+}
+
 .selection-portrait {
   gap: 11px;
 }

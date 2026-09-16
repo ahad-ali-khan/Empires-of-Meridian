@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createScene } from '@meridian/presentation';
-import { createNorthStarWorld } from '@meridian/presentation/north-star';
+import { createNorthStarWorld, loadNatureAssets } from '@meridian/presentation/north-star';
 import './style.css';
 
 type Backend = 'webgpu' | 'webgl';
@@ -79,7 +79,7 @@ const createHud = (): HTMLElement => {
     '  <div class="selection-stats"><span><b>100%</b><small>HEALTH</small></span><span><b>READY</b><small>STATUS</small></span><span><b>FRONTIER</b><small>ERA</small></span></div>',
     '  <div class="command-grid" aria-label="Command preview"><button type="button" aria-label="Build">⌂</button><button type="button" aria-label="Gather">✥</button><button type="button" aria-label="Repair">⟲</button><button type="button" aria-label="More commands">···</button></div>',
     '</footer>',
-    '<aside class="quality-panel" aria-label="Visual quality diagnostics"><div class="eyebrow">VISUAL QUALITY</div><div class="quality-tier" data-quality-tier>HIGH</div><div class="quality-metrics"><span><b data-fps>--</b><small>FPS</small></span><span><b data-calls>--</b><small>DRAWS</small></span><span><b data-triangles>--</b><small>TRIS</small></span><span><b data-textures>--</b><small>TEX</small></span></div><div class="quality-foot"><span data-instances>45 INSTANCES</span><span data-shadows>SOFT SUN · 2048²</span></div></aside>',
+    '<aside class="quality-panel" aria-label="Visual quality diagnostics"><div class="eyebrow">VISUAL QUALITY</div><div class="quality-tier" data-quality-tier>HIGH</div><div class="quality-metrics"><span><b data-fps>--</b><small>FPS</small></span><span><b data-calls>--</b><small>DRAWS</small></span><span><b data-triangles>--</b><small>TRIS</small></span><span><b data-textures>--</b><small>TEX</small></span></div><div class="quality-foot"><span data-instances>17 INSTANCES</span><span data-shadows>SOFT SUN · 2048²</span></div><div class="asset-debug"><div class="eyebrow">ASSET DEBUG</div><span>NATURE KIT · KENNEY</span><span>GLB · LOD NATIVE · CC0</span><span>BBOX 2.0m · SHARED MATERIALS</span></div></aside>',
     '<div class="controls-hint"><kbd>WASD</kbd> PAN <kbd>SCROLL</kbd> ZOOM <kbd>F1</kbd> HELP <span class="hint-divider"></span> PHASE 1 VISUAL TARGET</div>',
   ].join('');
   return hud;
@@ -115,6 +115,7 @@ const bootstrap = async (): Promise<void> => {
   scene.add(key);
 
   const world = createNorthStarWorld();
+  await loadNatureAssets(world.group);
   scene.add(world.group);
   const hud = createHud();
   app.append(hud);

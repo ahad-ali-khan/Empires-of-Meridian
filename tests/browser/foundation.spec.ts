@@ -34,7 +34,7 @@ test('asset preview route loads the local manifest and scene', async ({ page }) 
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/asset-preview.html');
   await expect(page).toHaveTitle('Meridian Asset Preview');
-  await expect(page.locator('[data-asset-list] li')).toHaveCount(13);
+  await expect(page.locator('[data-asset-list] li')).toHaveCount(14);
   await expect(page.locator('#preview-canvas')).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -73,11 +73,22 @@
       "generated": true
     },
     {
-      "id": "temperate-coast-trees",
-      "kind": "instanced-procedural",
-      "source": "packages/presentation",
-      "license": "original",
-      "generated": true
+      "id": "kenney-nature-trees",
+      "kind": "gltf",
+      "source": "assets/third-party/kenney-nature-kit/glTF",
+      "license": "CC0-1.0",
+      "author": "Kenney",
+      "sourceUrl": "https://kenney.nl/assets/nature-kit",
+      "generated": false
+    },
+    {
+      "id": "kenney-nature-rocks",
+      "kind": "gltf",
+      "source": "assets/third-party/kenney-nature-kit/glTF",
+      "license": "CC0-1.0",
+      "author": "Kenney",
+      "sourceUrl": "https://kenney.nl/assets/nature-kit",
+      "generated": false
     },
     {
       "id": "meridian-wall-and-gate",

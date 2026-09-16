@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export type SurfaceClass = 'grass' | 'forest' | 'rock' | 'sand' | 'shallow-water' | 'road';
 export type TerrainTile = {
@@ -15,6 +16,62 @@ export type NorthStarWorld = {
   stats: { instances: number; shadowSettings: string; qualityTier: string };
   update: (elapsed: number, reducedMotion: boolean) => void;
   dispose: () => void;
+};
+
+export const loadNatureAssets = async (
+  group: THREE.Group,
+  baseUrl = '/assets/nature',
+): Promise<void> => {
+  const anchor = group.getObjectByName('nature-assets');
+  if (!anchor) return;
+  const loader = new GLTFLoader();
+  const assets = [
+    ['tree_default.glb', 1.7, 1.0],
+    ['tree_tall.glb', 1.9, 0.9],
+    ['tree_pineTallA_detailed.glb', 1.8, 0.95],
+  ] as const;
+  const loaded = await Promise.all(
+    assets.map(async ([file, height, scale]) => ({
+      scene: (await loader.loadAsync(`${baseUrl}/${file}`)).scene,
+      height,
+      scale,
+    })),
+  );
+  const positions = [
+    [-8.8, -3.2],
+    [-7.7, -2.25],
+    [-6.7, -3.1],
+    [-5.8, -2.35],
+    [-5.0, -3.25],
+    [-4.4, -2.4],
+    [-8.0, -1.15],
+    [-6.9, -1.1],
+    [-4.3, -1.05],
+    [3.9, -2.4],
+    [4.8, -2.9],
+  ] as const;
+  positions.forEach(([x, z], index) => {
+    const source = loaded[index % loaded.length]!;
+    const tree = source.scene.clone(true);
+    tree.position.set(x, 0, z);
+    tree.scale.setScalar(source.scale);
+    tree.rotation.y = index * 0.63;
+    tree.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+        object.frustumCulled = true;
+      }
+    });
+    anchor.add(tree);
+  });
+  for (let index = 0; index < 6; index += 1) {
+    const rock = (await loader.loadAsync(`${baseUrl}/rock_largeF.glb`)).scene.clone(true);
+    rock.position.set(-3.5 + index * 1.3, 0.04, 2.4 + Math.sin(index) * 0.5);
+    rock.scale.setScalar(0.55 + (index % 3) * 0.12);
+    rock.rotation.y = index * 0.7;
+    anchor.add(rock);
+  }
 };
 
 const palette = {
@@ -197,62 +254,6 @@ const createRoad = (): THREE.Mesh => {
   return road;
 };
 
-const createTreeVariant = (
-  variant: number,
-  position: THREE.Vector3,
-  scale: number,
-): THREE.Group => {
-  const tree = new THREE.Group(),
-    trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.11, 0.2, 1.15, 7),
-      makeMaterial(palette.wood, 1),
-    );
-  trunk.position.y = 0.57;
-  tree.add(trunk);
-  const branches: readonly [number, number, number, number, number][] = [
-    [0.18, 0.9, 0.1, 0.12, 0.46],
-    [-0.18, 1.08, -0.04, -0.18, 0.38],
-    [0.08, 1.34, -0.14, 0.24, 0.3],
-  ];
-  branches.slice(0, variant === 0 ? 3 : variant === 1 ? 2 : 1).forEach(([x, y, z, rz, length]) => {
-    const branch = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.035, 0.065, length, 5),
-      makeMaterial(palette.wood, 1),
-    );
-    branch.position.set(x, y, z);
-    branch.rotation.z = rz;
-    tree.add(branch);
-  });
-  const crowns: readonly [number, number, number, number][] =
-    variant === 0
-      ? [
-          [0, 1.45, 0, 0.82],
-          [0.36, 1.72, -0.08, 0.54],
-          [-0.34, 1.68, 0.05, 0.58],
-        ]
-      : variant === 1
-        ? [
-            [0, 1.55, 0, 0.9],
-            [0.2, 1.85, 0.1, 0.5],
-          ]
-        : [
-            [0, 1.62, 0, 0.72],
-            [-0.3, 1.75, -0.1, 0.46],
-          ];
-  crowns.forEach(([x, y, z, radius], index) => {
-    const crown = new THREE.Mesh(
-      new THREE.ConeGeometry(radius, radius * 1.25, 7),
-      makeMaterial(index === 0 ? palette.forest : palette.forestDeep, 1),
-    );
-    crown.position.set(x, y, z);
-    crown.rotation.y = index * 0.7;
-    tree.add(crown);
-  });
-  tree.position.copy(position);
-  tree.scale.setScalar(scale);
-  return tree;
-};
-
 const createBanner = (position: THREE.Vector3, color: number): THREE.Group => {
   const banner = new THREE.Group(),
     pole = new THREE.Mesh(
@@ -420,22 +421,7 @@ export const createNorthStarWorld = (): NorthStarWorld => {
     shore = createShoreBand(terrain.shoreline),
     rain = createRain(),
     trees = new THREE.Group();
-  const treePositions = [
-    [-8.8, -0.02, -3.4, 0, 1.05],
-    [-7.8, 0.02, -2.4, 1, 0.9],
-    [-6.7, 0.04, -3.2, 2, 1.2],
-    [-5.9, 0.02, -2.3, 0, 0.82],
-    [-5, 0.01, -3.45, 1, 1.08],
-    [-4.5, 0.02, -2.5, 2, 0.9],
-    [-8.1, 0.01, -1.3, 2, 1.08],
-    [-6.8, 0.02, -1.2, 0, 0.88],
-    [-4.2, 0.02, -1, 1, 1],
-    [3.9, 0.02, -2.4, 2, 0.9],
-    [4.8, 0.04, -2.9, 0, 1.12],
-  ] as const;
-  treePositions.forEach(([x, y, z, variant, scale]) =>
-    trees.add(createTreeVariant(variant, new THREE.Vector3(x, y, z), scale)),
-  );
+  trees.name = 'nature-assets';
   group.add(
     terrain.mesh,
     water,
@@ -450,23 +436,10 @@ export const createNorthStarWorld = (): NorthStarWorld => {
     createBoat(new THREE.Vector3(4.55, 0.02, 4.2)),
     createProps(),
   );
-  const grass = new THREE.Group();
-  for (let index = 0; index < 34; index += 1) {
-    const x = -4.2 + (index % 9) * 0.9,
-      z = 1.8 + Math.floor(index / 9) * 0.48 + Math.sin(index) * 0.12;
-    const tuft = new THREE.Mesh(
-      new THREE.ConeGeometry(0.09, 0.34, 4),
-      makeMaterial(palette.grassLight, 1),
-    );
-    tuft.position.set(x, 0.16, z);
-    tuft.rotation.z = -0.18 + (index % 3) * 0.12;
-    grass.add(tuft);
-  }
-  group.add(grass);
   const boat = group.children.find(
     (child) => child instanceof THREE.Group && child.position.x > 4 && child.position.z > 3,
   ) as THREE.Group;
-  const stats = { instances: 11 + 34, shadowSettings: 'soft sun · 2048²', qualityTier: 'HIGH' };
+  const stats = { instances: 17, shadowSettings: 'soft sun · 2048²', qualityTier: 'HIGH' };
   const update = (elapsed: number, reducedMotion: boolean): void => {
     rain.visible = !reducedMotion;
     if (!reducedMotion) {
