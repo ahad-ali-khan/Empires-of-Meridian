@@ -1,7 +1,14 @@
 node_modules/
 dist/
+apps/web/dist/
+.vite/
+.env
+.env.*
+!.env.example
 .DS_Store
 *.log
+*.tsbuildinfo
 .turbo/
 test-results/
 playwright-report/
+coverage/

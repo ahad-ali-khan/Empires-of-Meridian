@@ -1,29 +1,26 @@
 {
   "name": "empires-of-meridian",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@11.19.0",
   "scripts": {
-    "dev": "turbo run dev --parallel",
-    "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
-    "lint": "eslint .",
-    "format:check": "prettier --check .",
-    "test": "turbo run test",
-    "test:browser": "playwright test",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:browser"
+    "dev": "vite apps/web --host 127.0.0.1 --port 5173",
+    "build": "tsc --noEmit && vite build apps/web",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "three": "0.186.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "@types/node": "24.3.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "@types/three": "0.186.0",
-    "eslint": "10.10.0",
-    "prettier": "3.9.6",
-    "three": "0.186.0",
-    "turbo": "2.5.6",
-    "typescript-eslint": "8.70.0",
-    "typescript": "6.0.3",
-    "vite": "8.3.0",
-    "vitest": "5.0.1"
-  }
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
+  },
+  "packageManager": "pnpm@11.19.0"
 }
