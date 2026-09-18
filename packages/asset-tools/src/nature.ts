@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {mat,mesh,beam,ball,box,cyl,tube,consolidate} from './geometry';
+import {ConvexGeometry} from 'three/addons/geometries/ConvexGeometry.js';
 function random(seed:number){let s=seed>>>0;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
 const leafMaterial=new T.MeshStandardMaterial({vertexColors:true,roughness:.92,side:T.DoubleSide});
 export const foliageTime={value:0},foliageWind={value:1};
@@ -23,10 +24,17 @@ class Leaves{
   finish(parent:T.Group){const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(this.positions,3));g.setAttribute('color',new T.Float32BufferAttribute(this.colors,3));g.setIndex(this.indices);g.computeVertexNormals();const m=mesh(g,leafMaterial,parent);m.customDepthMaterial=foliageDepth;}
 }
 
-export function buildTree(seed:number,pine=false){
+export function buildTree(seed:number,pine=false,halfCut=false){
   const rand=random(seed),wood=new T.Group(),leaves=new Leaves(),h=pine?6.3+rand()*1.4:4.6+rand()*1.4;
   const bark=pine?'#615140':'#76654c';
-  beam(wood,[0,0,0],[.10,h*.66,.03],pine?.15:.24,bark,.065);
+  if(!halfCut)beam(wood,[0,0,0],[.10,h*.66,.03],pine?.15:.24,bark,.065);
+  else{
+    const radius=pine?.15:.24,positions:number[]=[],colors:number[]=[],barkColor=new T.Color(bark),cutColor=new T.Color('#c7a577');
+    const ring=(y:number,i:number)=>{const a=i/16*Math.PI*2,r=T.MathUtils.lerp(radius,.065,y/(h*.66));return new T.Vector3(Math.cos(a)*r+y/h*.15,y,(y===.52&&Math.sin(a)>0?-.035:Math.sin(a)*r)+y/h*.045);};
+    const levels=[0,.34,.52,.72,h*.66];
+    for(let row=0;row<4;row++)for(let i=0;i<16;i++){const a=ring(levels[row],i),b=ring(levels[row],i+1),c=ring(levels[row+1],i),d=ring(levels[row+1],i+1),color=(row===1||row===2)&&Math.sin((i+.5)/16*Math.PI*2)>0?cutColor:barkColor;for(const p of [a,c,b,b,c,d]){positions.push(p.x,p.y,p.z);colors.push(color.r,color.g,color.b);}}
+    const geometry=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(positions,3)).setAttribute('color',new T.Float32BufferAttribute(colors,3));geometry.computeVertexNormals();mesh(geometry,new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.DoubleSide}),wood);
+  }
   for(let i=0;i<5;i++){const a=i/5*Math.PI*2;beam(wood,[Math.cos(a)*.5,.02,Math.sin(a)*.5],[0,.7,0],.07,bark,.10);}
   if(pine){
     beam(wood,[.10,h*.6,.03],[0,h,0],.06,bark,.012);
@@ -75,24 +83,31 @@ export function buildBush(seed:number,berries=false){
   const out=consolidate(wood);leaves.finish(out);out.name=berries?'berries':'bush';return out;
 }
 
-export function buildMine(){
-  const rocks=new T.Group(),ore=new T.Group(),rand=random(912);
-  const locations=[[-0.85,0.10,-0.15,0.9],[0.1,0.25,-0.4,1.0],[0.9,0.0,0.1,0.65],[-0.1,0.0,0.65,0.72],[-1.1,-0.15,0.8,0.45]];
-  for(const [x,y,z,radius] of locations){
-    const g=new T.IcosahedronGeometry(radius,1);g.scale(1,0.70+rand()*0.40,0.70+rand()*0.5);g.rotateY(rand()*4);g.translate(x,y+radius*0.40,z);
-    mesh(g,mat(rand()>0.5?'#707a75':'#586761',0.94),rocks);
-    const a=g.attributes.position,indices=g.index;const count=indices?indices.count:a.count;
-    for(let i=0;i<count;i+=3){
-      const ids=[0,1,2].map(j=>indices?indices.getX(i+j):i+j);
-      const pts=ids.map(id=>new T.Vector3().fromBufferAttribute(a,id));
-      const n=pts[1].clone().sub(pts[0]).cross(pts[2].clone().sub(pts[0])).normalize();
-      if(n.y<-0.1||rand()>0.32)continue;
-      const center=pts[0].clone().add(pts[1]).add(pts[2]).multiplyScalar(1/3);
-      const pg=new T.BufferGeometry(),v:number[]=[];
-      pts.forEach(p=>{const q=center.clone().lerp(p,0.42+rand()*0.40).addScaledVector(n,0.009);v.push(q.x,q.y,q.z);});
-      pg.setAttribute('position',new T.Float32BufferAttribute(v,3));pg.computeVertexNormals();
-      mesh(pg,mat(rand()>0.5?'#b9984a':'#d1b365',0.53,0.38),ore);
+export function buildMine(stoneOnly=false){
+  const result=new T.Group(),rand=random(stoneOnly?614:912);
+  for(let i=0;i<12;i++){
+    const a=i*2.39996,r=i<3?.34:.8+rand()*.55,x=Math.cos(a)*r,z=Math.sin(a)*r;
+    const w=i<3?.70:.34+rand()*.31,h=i<3?1.1+rand()*.45:.35+rand()*.65,chunk=new T.Group();
+    // Fractured slabs, with a narrow exposed mineral seam between two faces.
+    for(const side of [-1,1]){
+      const pts:T.Vector3[]=[];for(const y of [0,h])for(const xx of [-w*.44,w*.44])for(const zz of [-w*.65,w*.65])pts.push(new T.Vector3(xx+side*w*.48+(rand()-.5)*.14,y*(.84+rand()*.20),zz+(rand()-.5)*.17));
+      mesh(new ConvexGeometry(pts),mat(side<0?'#707d7c':'#515f63',.94),chunk);
     }
+    if(!stoneOnly)for(let j=0;j<8;j++){
+      const y=.12+j/8*h,vein=mesh(new T.DodecahedronGeometry(.13+rand()*.05),mat(j%3?'#bc943a':'#e0bf66',.35,.68),chunk,(rand()-.5)*.07,y,(rand()-.5)*w*.60);
+      vein.scale.set(.43,.9,1.5);vein.rotation.set(rand(),rand(),rand());
+      if(j%3===0)ball(chunk,.05,y,w*.40,.055,.08,.07,'#e0d3b6',0);
+    }
+    const combined=consolidate(chunk);combined.position.set(x,0,z);combined.rotation.y=a;combined.name=`resourceChunk${i}`;combined.userData.resourceChunk=i;result.add(combined);
   }
-  const result=new T.Group(),stone=consolidate(rocks),gold=consolidate(ore);stone.name='stone';gold.name='ore';result.add(stone,gold);result.name='mine';return result;
+  result.name=stoneOnly?'stoneMine':'mine';return result;
+}
+
+export function setResourceLevel(root:T.Object3D,percent:number){const count=Math.ceil(T.MathUtils.clamp(percent,0,100)/100*12);root.traverse(o=>{if(typeof o.userData.resourceChunk==='number'){const visible=o.userData.resourceChunk<count;o.traverse(child=>child.visible=visible);}});root.userData.remaining=percent;}
+
+export function buildFelledTree(seed:number,pine=false){
+ const root=new T.Group(),crown=buildTree(seed,pine,true);crown.name='fallenCrown';
+ for(const child of [...crown.children])if(child instanceof T.Mesh){if(child.material===leafMaterial){crown.remove(child);child.geometry.dispose();continue;}child.material=new T.MeshStandardMaterial({color:'#79664b',roughness:1});child.customDepthMaterial=undefined;const g=child.geometry,idx=g.index!.array,pos=g.attributes.position,keep:number[]=[];for(let i=0;i<idx.length;i+=3)if((pos.getY(idx[i])+pos.getY(idx[i+1])+pos.getY(idx[i+2]))/3>.52)keep.push(idx[i],idx[i+1],idx[i+2]);g.setIndex(keep);}
+ cyl(root,.22,.34,.48,0,.24,0,'#79664b',16);cyl(root,.22,.22,.02,0,.49,0,'#c6a779',16);root.add(crown);
+ crown.rotation.z=Math.PI/2;crown.updateMatrixWorld(true);crown.userData.landY=-new T.Box3().setFromObject(crown).min.y+.025;crown.position.y=crown.userData.landY;root.name='treeHalfCut';return root;
 }

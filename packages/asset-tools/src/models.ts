@@ -3,6 +3,11 @@ import {C,mat,mesh,box,cyl,ball,beam,tube,joint,finishRig,consolidate} from './g
 export {C,mat,mesh,box,cyl,ball,beam,consolidate} from './geometry';
 import {buildPerson,buildRider,buildSheep,buildFish,animateAsset} from './actors';
 import {buildTree,buildBush,buildMine} from './nature';
+import {extraInfo,buildExtended,buildingKinds,type ExtraKind} from './extended';
+import {architecture} from './architecture';
+import {defaultAge,validateAge} from './ages';
+import {addShot} from './combat';
+import {buildNaval,navalKinds} from './naval';
 export {animateAsset};
 
 // Original Meridian kit. World units are metres; Y is up, building fronts face +Z.
@@ -22,8 +27,9 @@ function arch(p:T.Group,x:number,y:number,z:number,w:number,h:number,door=false)
   if(!door){box(p,.055,h-.1,.05,x,y+h/2,z+.04,C.gold);box(p,w,.05,.05,x,y+h*.5,z+.05,C.gold);}else{for(let i=0;i<5;i++)box(p,.023,h*.7,.02,x-w*.4+i*w*.2,y+h*.35,z+.02,C.dark);ball(p,x+w*.24,y+h*.4,z+.08,.055,.055,.045,C.gold);}
 }
 function shell(p:T.Group,w:number,h:number,d:number){box(p,w+.5,.35,d+.5,0,.18,0,'#9e9b87');box(p,w,h,d,0,h/2+.3,0,C.stone);box(p,w+.15,.15,d+.15,0,.65,0,C.trim);box(p,w+.2,.2,d+.2,0,h+.28,0,C.light);for(const x of [-w/2,w/2])for(const z of [-d/2,d/2]){box(p,.25,h,.25,x,h/2+.3,z,C.light);for(let y=.5;y<h;y+=.42)box(p,.32,.12,.32,x,y,z,'#b6ac93');}roof(p,w+.7,d+.7,h+.42,h*.38);}
-export type AssetKind='hall'|'house'|'market'|'tower'|'infantry'|'cavalry'|'cannon'|'ship'|'fishingBoat'|'villager'|'sheep'|'bush'|'berries'|'mine'|'fish'|'tree'|'pine';
+export type AssetKind=ExtraKind|'hall'|'house'|'market'|'tower'|'infantry'|'cavalry'|'cannon'|'ship'|'fishingBoat'|'villager'|'sheep'|'bush'|'berries'|'mine'|'fish'|'tree'|'pine';
 export const assetInfo:Record<AssetKind,{name:string,category:string,description:string}>={
+ ...extraInfo,
  hall:{name:'Charter Hall',category:'CIVIC ARCHITECTURE',description:'Limestone arcades, a copper cupola and a sea-green charter banner. The civic heart of the Aurelian League.'},
  house:{name:'Harbor Residence',category:'SETTLEMENT ARCHITECTURE',description:'Plastered stone, tiled copper-green roofing, shuttered windows and a sheltered street entrance.'},
  market:{name:'Exchange House',category:'TRADE ARCHITECTURE',description:'A timber-framed covered exchange, striped canvas stalls and hand-built cargo props.'},
@@ -43,9 +49,9 @@ export const assetInfo:Record<AssetKind,{name:string,category:string,description
  pine:{name:'Frontier Pine',category:'CONIFER TREE',description:'Open radial branches and layered needle sprays, with a narrow wind-shaped crown.'}
 };
 export function wheel(p:T.Group,x:number,y:number,z:number,r:number){const tire=mesh(new T.TorusGeometry(r,.07,6,18),mat(C.dark),p,x,y,z);tire.rotation.y=Math.PI/2;const rim=mesh(new T.TorusGeometry(r-.09,.055,6,18),mat(C.wood),p,x,y,z);rim.rotation.y=Math.PI/2;beam(p,[x-.13,y,z],[x+.13,y,z],.13,C.gold);for(let i=0;i<10;i++){const a=i*Math.PI/5;beam(p,[x,y,z],[x,y+Math.cos(a)*(r-.10),z+Math.sin(a)*(r-.10)],.035,C.wood);}}
-export function buildAsset(kind:AssetKind){const p=new T.Group();
- if(kind==='infantry'||kind==='villager')return buildPerson(kind==='villager');
- if(kind==='cavalry')return buildRider();
+export function buildAsset(kind:AssetKind,age=defaultAge(kind)):T.Group{validateAge(kind,age);if(buildingKinds.has(kind))return architecture(kind,age);if(navalKinds.has(kind))return buildNaval(kind,age);if(kind in extraInfo){const model=buildExtended(kind as ExtraKind,k=>buildAsset(k as AssetKind),age);model.name=kind;return model;}const p=new T.Group();
+ if(kind==='infantry'||kind==='villager')return buildPerson(kind==='villager',false,false,false,age);
+ if(kind==='cavalry')return buildRider(age);
  if(kind==='sheep')return buildSheep();
  if(kind==='fish')return buildFish();
  if(kind==='bush'||kind==='berries')return buildBush(901,kind==='berries');
@@ -83,12 +89,16 @@ export function buildAsset(kind:AssetKind){const p=new T.Group();
  }else if(kind==='tower'){
  cyl(p,1.15,1.6,4.5,0,2.25,0,C.stone,8);cyl(p,1.65,1.65,.25,0,4.25,0,C.wood,8);cyl(p,1.4,1.4,1.3,0,4.95,0,C.wood,8);for(let i=0;i<8;i++){const a=i*Math.PI/4;box(p,.18,1.4,.18,Math.sin(a)*1.48,4.95,Math.cos(a)*1.48,C.trim);}cyl(p,0,2.05,2,0,6.6,0,C.roof,8);arch(p,0,.1,1.49,.6,1.65,true);for(const y of [1.8,3])box(p,.2,.55,.1,0,y,1.32,C.dark);
  }else if(kind==='cannon'){
+ p.userData.artillery=true;
+ addShot(p,'shell',7,5,[0,1.1,1.5]);
  for(const x of [-0.73,0.73]){const pivot=joint(p,`cannonWheel${x}`,x,.65,0);wheel(pivot,0,0,0,.64);}
  beam(p,[-0.85,0.65,0],[0.85,0.65,0],0.09,C.dark);
  for(const x of [-0.38,0.38]){beam(p,[x,0.82,0.3],[x*0.6,0.18,-1.9],0.12,C.wood);box(p,0.16,0.55,0.9,x,0.7,0,C.wood);box(p,0.17,0.09,0.8,x,0.91,0,C.cloth);}
  const barrel=joint(p,'barrel',0,1.1,0.15);barrel.rotation.x=Math.PI/2-0.10;
  const profile=[new T.Vector2(0.12,-0.9),new T.Vector2(0.26,-0.75),new T.Vector2(0.24,-0.3),new T.Vector2(0.19,1.1),new T.Vector2(0.24,1.18),new T.Vector2(0.24,1.32),new T.Vector2(0.13,1.34),new T.Vector2(0.13,0.96)];
  mesh(new T.LatheGeometry(profile,20),mat('#a98950',0.44,0.65),barrel);
+ cyl(barrel,.125,.125,.08,0,-.88,0,'#947544',20);ball(barrel,0,-1.02,0,.10,.12,.10,'#a98950',2);
+ cyl(barrel,.13,.13,.025,0,.96,0,'#202523',20);
  for(const [y,r] of [[-0.72,0.263],[-0.29,0.242],[0.56,0.211],[1.25,0.242]]){
    const ring=mesh(new T.TorusGeometry(r,0.018,6,20),mat(C.gold,0.4,0.6),barrel,0,y,0);ring.rotation.x=Math.PI/2;ring.name='barrelBand';
  }

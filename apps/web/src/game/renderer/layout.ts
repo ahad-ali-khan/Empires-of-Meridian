@@ -29,11 +29,12 @@ export function createLayout(seed=SEED){
   }
   const farm=reserve('farm','farm',-35,-1,4.4,6.2);
   const plaza=reserve('plaza','plaza',-3,4,3.8,3.8);
-  const definitions:[string,number,number,number,number,number?][]=[['hall',-4,-6,5.4,4.2],['market',-17,4,3,3.5],['house',-17,-6,2.25,1.95],['house',-23,-5,2.25,1.95,.1],['house',-25,3,2.25,1.95,-.15],['house',-14,-20,2.25,1.95],['house',-21,-21,2.25,1.95,.08],['house',5,-13,2.25,1.95,-.2],['house',8,-6,2.25,1.95],['house',8,2,2.25,1.95,-.1],['house',-12,20,2.25,1.95,Math.PI],['house',-20,21,2.25,1.95,Math.PI+.1],['house',-28,19,2.25,1.95,Math.PI],['house',-24,-14,2.25,1.95],['tower',15,-18,2.1,2.1],['tower',-30,-28,2.1,2.1]];
-  definitions.forEach(([kind,x,z,hx,hz,r=0],i)=>{const jitter=seed===SEED?0:1.3;buildings.push(reserve(`building-${i}`,kind,x+(rand()-.5)*jitter,z+(rand()-.5)*jitter,hx,hz,r));});
+  const definitions:[string,number,number,number,number,number?][]=[['hall',-4,-6,6.1,4.6],['market',-17,4,3,3.5],['house',-17,-6,2.25,1.95],['house',-23,-5,2.25,1.95,.1],['house',-25,3,2.25,1.95,-.15],['house',-14,-20,2.25,1.95],['house',-21,-21,2.25,1.95,.08],['house',5,-13,2.25,1.95,-.2],['house',8,-6,2.25,1.95],['house',8,2,2.25,1.95,-.1],['house',-12,20,2.25,1.95,Math.PI],['house',-20,21,2.25,1.95,Math.PI+.1],['house',-28,19,2.25,1.95,Math.PI],['house',-24,-14,2.25,1.95],['tower',15,-18,2.1,2.1],['tower',-30,-28,2.1,2.1]];
+  definitions.forEach(([kind,x,z,hx,hz,r=0],i)=>{const jitter=seed===SEED?0:1.3;buildings.push(reserve(`building-${i}`,kind,x+(rand()-.5)*jitter,z+(rand()-.5)*jitter,kind==='house'?2.9:kind==='tower'?3:hx,kind==='tower'?3:hz,r));});
   const mine=reserve('mine','mine',-26,29,3.4,3.7);
   const berries=reserve('berries','berries',-8,31,2.7,2.7);
   const sheep=reserve('pasture','pasture',-39,19,4.2,3.5);
+  for(const [kind,x,z,hx,hz] of [['lumberPost',-47,5,2.8,2],['miningPost',-33,29,2.9,2.2],['silo',-42,-8,2.8,2.3],['stable',-17,33,3.9,4.9],['barracks',5,35,3.9,4.9],['archery',14,35,3.9,4.9],['workshop',-3,44,3.9,4.9]] as [string,number,number,number,number][])buildings.push(reserve(kind,kind,x,z,hx,hz));
   // The fishing habitat is entirely seaward, with a clearance for boats and waves.
   const fish={x:coast(34)+8,z:34,radius:4.5};
   function height(x:number,z:number){const base=rawHeight(x,z);let closest:Footprint|undefined,edge=Infinity;for(const r of reserved){const d=Math.max(Math.abs(x-r.x)-r.hx,Math.abs(z-r.z)-r.hz);if(d<edge){closest=r;edge=d;}}if(!closest||edge>=1.3)return base;if(edge<=1e-7)return closest.y;const f=1-edge/1.3,smooth=f*f*(3-2*f);return base*(1-smooth)+closest.y*smooth;}
