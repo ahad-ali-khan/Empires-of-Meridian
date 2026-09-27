@@ -1,8 +1,8 @@
 import {checksum, createMatch, step} from '../packages/sim/src/index';
 import {chooseIntent, featuresFor, DEFAULT_AI_POLICY} from '../packages/sim/src/ai-policy';
 
-const matchCount = Math.max(1, Number(process.env.AI_EVAL_MATCHES ?? 12));
-const tickBudget = Math.max(1, Number(process.env.AI_EVAL_TICKS ?? 2400));
+const matchCount = Math.max(1, Number(process.env.AI_EVAL_MATCHES ?? 40));
+const tickBudget = Math.max(1, Number(process.env.AI_EVAL_TICKS ?? 3600));
 const seeds = Array.from({length: matchCount}, (_, i) => 7000 + i);
 const reports = seeds.map((seed) => {
   const state = createMatch({

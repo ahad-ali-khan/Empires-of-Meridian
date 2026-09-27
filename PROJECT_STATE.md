@@ -6,7 +6,7 @@ September 19 continuation: map generation is version 5 with three seed-driven ma
 
 Implemented: a local Three.js settlement and Asset Forge with original procedural assets, articulated animation previews, resource demonstrations, weather, and an actively developed deterministic offline match.
 
-Current verification slice: `pnpm typecheck`, `pnpm test:unit`, and `pnpm ai:evaluate:local`. The offline AI now records target, route, and resource-focus telemetry; the local evaluator runs 12 deterministic small-map matches and reports strategy/route/target variety. Multiplayer remains a foundation fixture, not a release-ready authoritative service.
+Current verification slice: `pnpm typecheck`, `pnpm test:unit`, and `pnpm ai:evaluate:local`. The offline AI now records target, route, and resource-focus telemetry; the local evaluator runs 40 deterministic small-map matches for 3,600 ticks by default and reports strategy/route/target variety. Multiplayer remains a foundation fixture, not a release-ready authoritative service.
 
 - [ ] Milestone 0: foundation, deterministic fixtures, services, CI
 - [ ] Milestone 1: offline vertical slice
