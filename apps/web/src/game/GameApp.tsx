@@ -240,6 +240,8 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     else if (command.type === 'move' || command.type === 'rally') playVoice('commander_move', 0.5);
     else if (command.type === 'attack') playVoice('commander_attack', 0.52);
     else if (command.type === 'build' || command.type === 'resume-build') playVoice('commander_build', 0.5);
+    else if (command.type === 'advance') playVoice('commander_research', 0.58);
+    else if (command.type === 'dispatch') playVoice('commander_dispatch', 0.58);
   };
   useEffect(() => {
     const w = new Worker(new URL('./sim/match.worker.ts', import.meta.url), {type: 'module'});
@@ -336,11 +338,12 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       }
       return;
     }
-    if (target && target.owner > 1 && !target.remembered) {
-      sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id});
-      setMessage('Attack order issued.');
-      return;
-    }
+      if (target && target.owner > 1 && !target.remembered) {
+        sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id});
+        playVoice('enemy_sighted', 0.58);
+        setMessage('Attack order issued.');
+        return;
+      }
     sendRef.current({
       type: 'move',
       entityIds: mobile.map((e) => e.id),

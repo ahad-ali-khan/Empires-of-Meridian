@@ -133,9 +133,7 @@ export function resetAudioThrottle() {
 export function voiceForSimulationEvent(kind: string, text: string) {
   const value = `${kind} ${text}`.toLowerCase();
   if (kind === 'victory' || value.includes('wins by conquest')) return 'victory';
-  if (kind === 'combat' && value.includes('destroyed')) return 'enemy_sighted';
   if (kind === 'build' && value.includes('completed')) return 'building_complete';
-  if (kind === 'train') return 'soldier_move';
   if (kind === 'age' && value.includes('advanced')) return `age_${value.includes('4') ? 'industrial' : value.includes('3') ? 'medieval' : 'classical'}`;
   if (kind === 'dispatch') return 'dispatch_arrived';
   if (kind === 'gather' && value.includes('no matching')) return 'worker_no_resource';
