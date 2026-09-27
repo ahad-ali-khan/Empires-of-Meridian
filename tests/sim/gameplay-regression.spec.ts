@@ -64,6 +64,14 @@ test('the AI must discover a target before issuing an attack', () => {
   expect(s.players[1].stats.gathered.provisions).toBeGreaterThan(0);
   expect(s.players[1].stats.gathered.timber).toBeGreaterThan(0);
 });
+test('the AI transitions from development into scouting and pressure', () => {
+  const s = createMatch(config);
+  for (let i = 0; i < 3600; i++) step(s, []);
+  const trace = s.aiTrace.filter((entry) => entry.playerId === 2);
+  expect(trace.some((entry) => entry.goal === 'scout')).toBe(true);
+  expect(trace.some((entry) => entry.goal === 'engage')).toBe(true);
+  expect(s.commandLog.some((command) => command.playerId === 2 && command.type === 'attack')).toBe(true);
+});
 test('placement rejects overlap and shoreline footprints', () => {
   const s = createMatch(config),
     hall = s.entities.find((e) => e.kind === 'hall')!;
