@@ -367,7 +367,8 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         }
         const next = add ? new Set(selectedRef.current) : new Set<number>();
         if (entity) {
-          add && next.has(id) ? next.delete(id) : next.add(id);
+          if (add && next.has(id)) next.delete(id);
+          else next.add(id);
           playAudio('ui.selection');
         }
         selectedRef.current = next;

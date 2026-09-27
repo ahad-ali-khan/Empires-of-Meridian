@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {mat,mesh,beam,ball,box,cyl,tube,consolidate} from './geometry';
+import {mat,mesh,beam,ball,cyl,consolidate} from './geometry';
 import {ConvexGeometry} from 'three/addons/geometries/ConvexGeometry.js';
 function random(seed:number){let s=seed>>>0;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
 const leafMaterial=new T.MeshStandardMaterial({vertexColors:true,roughness:.92,side:T.DoubleSide});

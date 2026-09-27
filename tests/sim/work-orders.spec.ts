@@ -8,7 +8,7 @@ import {
   serializeSave,
   restoreSave,
 } from '../../packages/sim/src/index';
-import {buildingById, unitById} from '../../packages/content/src/index';
+import {buildingById} from '../../packages/content/src/index';
 import {blocked} from '../../packages/sim/src/navigation';
 import {perimeterPoint} from '../../packages/sim/src/spatial';
 import type {Command} from '../../packages/protocol/src/index';

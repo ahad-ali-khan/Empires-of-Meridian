@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {buildAsset,assetInfo,box,ball,beam,cyl,mat,C,consolidate,type AssetKind} from '../../../../../packages/asset-tools/src/models';
+import {buildAsset,box,ball,beam,cyl,mat,C,consolidate,type AssetKind} from '../../../../../packages/asset-tools/src/models';
 import {buildTree,buildFelledTree,setFoliageTime,setResourceLevel} from '../../../../../packages/asset-tools/src/nature';
 import {animateAsset,type Clip} from '../../../../../packages/asset-tools/src/actors';
 import {createEnvironment} from './environment';

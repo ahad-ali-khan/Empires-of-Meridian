@@ -4,7 +4,7 @@ import {Showcase, assetInfo, type Light, type Metrics, type View} from './game/r
 import type {AssetKind} from '../../../packages/asset-tools/src/models';
 import type {Weather} from './game/renderer/environment';
 import type {Clip} from '../../../packages/asset-tools/src/actors';
-import {clipsFor,conditionsFor,buildingKinds,eras,type Condition} from '../../../packages/asset-tools/src/extended';
+import {clipsFor,conditionsFor,eras,type Condition} from '../../../packages/asset-tools/src/extended';
 import {agesFor,defaultAge,unlockAge,militiaUpgrade} from '../../../packages/asset-tools/src/ages';
 import {roles,ageDescription} from '../../../packages/asset-tools/src/catalog';
 import {GameApp} from './game/GameApp';

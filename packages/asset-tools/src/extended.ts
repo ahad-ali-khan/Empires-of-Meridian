@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {C,mat,mesh,box,cyl,ball,beam,tube,joint,finishRig,consolidate,ellipsoid as oval} from './geometry';
 import {buildPerson,buildRider,rifle,type Clip} from './actors';
-import {buildMine,buildTree,buildFelledTree} from './nature';
+import {buildMine,buildFelledTree} from './nature';
 import {buildBow,addShot} from './combat';
 
 const buildings={lumberPost:'Lumber Post',miningPost:'Mining Post',silo:'Grain Silo',stable:'Riding Stable',barracks:'Barracks',archery:'Archery Range',workshop:'Artillery Workshop',dock:'Harbor Dock',tradePost:'Trade Post',mercenaryHall:'Contract Hall',embassy:'Alliance Embassy',arsenal:'Arsenal',academy:'Academy',temple:'Civic Sanctuary',factory:'Engine Factory',wall:'Curtain Wall',gate:'City Gate',fort:'Coastal Fort',landmark:'Meridian Beacon',farm:'Grain Farm',estate:'Orchard Estate',fishery:'Shore Fishery'} as const;
@@ -78,7 +78,7 @@ export function buildBuilding(kind:BuildingKind){
    if(kind==='archery'){for(const x of [-2,0,2]){beam(g,[x,0,3],[x,1.6,3],.06,C.wood);const target=cyl(g,.42,.42,.09,x,1.4,3,'#dbcc9d',20);target.rotation.x=Math.PI/2;const inner=cyl(g,.23,.23,.10,x,1.4,3.03,C.cloth,20);inner.rotation.x=Math.PI/2;}}
    if(kind==='barracks'||kind==='arsenal'||kind==='mercenaryHall'){for(let i=0;i<5;i++){const x=-1.2+i*.6;beam(g,[x,.1,2.5],[x,2.1,2.5],.025,C.wood);mesh(new T.ConeGeometry(.09,.28,4),mat('#a0aaa3',.4,.6),g,x,2.2,2.5);}beam(g,[-1.5,1.1,2.5],[1.5,1.1,2.5],.06,C.wood);}
    if(kind==='workshop'||kind==='factory'){box(g,.65,5,.65,2.2,2.5,-1,C.stone);box(g,.85,.2,.85,2.2,5,-1,C.trim);box(g,1.5,.75,.9,1.4,.4,2.4,'#616663');const anvil=box(g,.85,.2,.38,1.4,.95,2.4,C.dark);anvil.rotation.y=.2;for(const x of [-1.8,-.8])wheel(g,x,.55,2.6,.52);if(kind==='factory'){room(g,3,3,3.3,-4,-1);for(let i=0;i<3;i++)cyl(g,.15,.15,2,1-i*.6,4,-1,C.dark,12);}}
-   if(kind==='academy'||kind==='temple'||kind==='embassy'){for(const x of [-1.4,-.7,.7,1.4])cyl(g,.10,.13,2.6,x,1.3,2.2,C.trim,12);roof(g,3.6,1.4,2.55);if(kind==='temple'){const dome=mesh(new T.SphereGeometry(1.25,20,12,0,Math.PI*2,0,Math.PI/2),mat(C.roof),g,0,4.5,0);cyl(g,.2,.3,.8,0,5.6,0,C.gold,12);}}
+   if(kind==='academy'||kind==='temple'||kind==='embassy'){for(const x of [-1.4,-.7,.7,1.4])cyl(g,.10,.13,2.6,x,1.3,2.2,C.trim,12);roof(g,3.6,1.4,2.55);if(kind==='temple'){mesh(new T.SphereGeometry(1.25,20,12,0,Math.PI*2,0,Math.PI/2),mat(C.roof),g,0,4.5,0);cyl(g,.2,.3,.8,0,5.6,0,C.gold,12);}}
    if(kind==='tradePost'){for(let i=0;i<5;i++)crate(g,-1+i*.6,0,2.4);banner(g,-2.2,3.4,1.6);}
    banner(g,wide?-2.7:-1.6,3.7,1.8);
  }

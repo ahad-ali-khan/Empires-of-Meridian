@@ -81,7 +81,8 @@ export function Minimap({
         points.forEach((p, i) => {
           const x = ((p.x * 256) / size) * n,
             z = ((p.z * 256) / size) * n;
-          i ? ctx.lineTo(x, z) : ctx.moveTo(x, z);
+          if (i) ctx.lineTo(x, z);
+          else ctx.moveTo(x, z);
         });
         ctx.closePath();
         ctx.stroke();

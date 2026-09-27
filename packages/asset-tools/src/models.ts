@@ -105,7 +105,7 @@ export function buildAsset(kind:AssetKind,age=defaultAge(kind)):T.Group{validate
  const flash=joint(barrel,'muzzleFlash',0,1.50,0);
  mesh(new T.SphereGeometry(0.13,8,6),new T.MeshBasicMaterial({color:'#ffdc8e',toneMapped:false}),flash,0,0.02,0).scale.y=1.8;
  const loader=buildPerson(false,false,true);loader.name='loader';loader.position.set(-1.15,0,-0.68);loader.rotation.y=Math.PI/2;p.add(loader);
- const ammo=new T.Group();ammo.name='ammo';const ammoMesh=ball(ammo,0,0.03,0.06,0.105,0.105,0.105,'#343e39',2);loader.getObjectByName('hand1')!.add(ammo);
+ const ammo=new T.Group();ammo.name='ammo';ball(ammo,0,0.03,0.06,0.105,0.105,0.105,'#343e39',2);loader.getObjectByName('hand1')!.add(ammo);
  const rammer=buildPerson(false,false,true);rammer.name='rammer';rammer.position.set(1.23,0,0.46);rammer.rotation.y=-Math.PI/2;p.add(rammer);
  const swab=joint(p,'swab',0,1.25,2.4);beam(swab,[0,0,-0.90],[0,0,0.60],0.025,C.wood);const swabTip=cyl(swab,0.062,0.062,0.16,0,0,-0.90,'#9c9c83',12);swabTip.rotation.x=Math.PI/2;
  const result=finishRig(p);result.name='cannon';return result;

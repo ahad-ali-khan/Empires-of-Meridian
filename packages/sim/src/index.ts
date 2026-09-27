@@ -956,9 +956,6 @@ function depositCargo(state: MatchState, e: Entity) {
     delete e.carry[k];
   }
 }
-function carryTotal(e: Entity) {
-  return Object.values(e.carry).reduce((n, v) => n + (typeof v === 'number' ? v : 0), 0);
-}
 function resourceKind(e: Entity): ResourceKind {
   return e.kind === 'timber' ? 'timber' : e.kind === 'coin' ? 'coin' : e.kind === 'metal' ? 'metal' : 'provisions';
 }

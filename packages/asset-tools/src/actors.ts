@@ -16,7 +16,7 @@ function face(parent:T.Group,villager:boolean,age=4,role=''){
   else if(role==='medic'){oval(p,0,.23,-.035,.17,.13,.15,C.light);}
   else if(age===1){tube(p,[[-.14,.16,0],[0,.17,.14],[.14,.16,0]],.025,C.cloth);oval(p,0,.17,-.025,.145,.055,.115,'#514536');}
   else if(!villager&&age<4){
-    const hood=role==='archer'||role==='crossbow';mesh(new T.SphereGeometry(.16,16,12,0,Math.PI*2,0,Math.PI/2),mat(hood?C.cloth:age===2?'#ab8a51':'#88928c'),p,0,.15,0);if(!hood){const helmet=cyl(p,.045,.155,.16,0,.27,0,age===2?'#ab8a51':'#88928c',16);box(p,.028,.22,.025,0,.11,.14,C.gold);}else oval(p,0,.14,-.09,.12,.12,.1,C.cloth);
+    const hood=role==='archer'||role==='crossbow';mesh(new T.SphereGeometry(.16,16,12,0,Math.PI*2,0,Math.PI/2),mat(hood?C.cloth:age===2?'#ab8a51':'#88928c'),p,0,.15,0);if(!hood){cyl(p,.045,.155,.16,0,.27,0,age===2?'#ab8a51':'#88928c',16);box(p,.028,.22,.025,0,.11,.14,C.gold);}else oval(p,0,.14,-.09,.12,.12,.1,C.cloth);
   }else if(!villager&&age===5){mesh(new T.SphereGeometry(.19,20,12,0,Math.PI*2,0,Math.PI/2),mat(C.roof2),p,0,.15,0);box(p,.18,.045,.05,0,.17,.17,C.cloth);}
   else if(villager){
     const brim=cyl(p,.22,.23,.025,0,.20,.015,C.roof2,24);brim.scale.z=.84;
@@ -104,7 +104,7 @@ export function buildPerson(villager=false,mounted=false,crew=false,female=false
     if(!villager)oval(arm,s*.006,.01,0,.093,.024,.092,C.gold);
     const elbow=joint(arm,`elbow${s}`,s*.025,-.25,.015);elbow.rotation.x=-.24;
     beam(elbow,[0,0,0],[0,-.215,.015],.059,cloth,.045);
-    const cuff=cyl(elbow,.052,.048,.055,0,-.20,.013,villager?C.light:C.roof2,12);
+    cyl(elbow,.052,.048,.055,0,-.20,.013,villager?C.light:C.roof2,12);
     const hand=joint(elbow,`hand${s}`,0,-.259,.025);oval(hand,0,0,0,.043,.060,.036,C.skin);
     for(let i=0;i<4;i++)oval(hand,-.027+i*.018,-.03,.025,.009,.03,.011,C.skin);
     oval(hand,s*-.035,.01,.033,.016,.033,.016,C.skin);

@@ -1,7 +1,6 @@
 import {expect, test} from 'vitest';
 import {createMatch, step, checksum, restoreSave, serializeSave} from '../../packages/sim/src/index';
 import {buildAsset, animateAsset} from '../../packages/asset-tools/src/models';
-import type {Command} from '../../packages/protocol/src/index';
 const config = {
   v: 1 as const,
   seed: 73,

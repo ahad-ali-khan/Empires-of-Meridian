@@ -68,7 +68,7 @@ const tones: Record<AudioEventId, Tone[]> = {
 let context: AudioContext | undefined;
 let master: GainNode | undefined;
 let lastPlayed = new Map<AudioEventId, number>();
-let lastVoice = new Map<VoiceAssetId, number>();
+const lastVoice = new Map<VoiceAssetId, number>();
 const effectFiles: Partial<Record<AudioEventId, string>> = {
   'ui.command.accepted': 'ui-command-accepted',
   'ui.command.rejected': 'ui-command-rejected',

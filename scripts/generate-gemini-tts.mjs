@@ -25,7 +25,9 @@ async function generate(item, itemIndex) {
       await access(resolve(item.out));
       console.log(`${item.id ?? basename(item.out)} -> already exists`);
       return;
-    } catch {}
+    } catch {
+      // Missing output means this item still needs generation.
+    }
   }
   let response;
   let payload;
