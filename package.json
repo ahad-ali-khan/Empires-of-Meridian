@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "content:reference": "tsx scripts/generate-content-reference.ts",
+    "audio:tts": "node scripts/generate-gemini-tts.mjs",
     "ai:evaluate": "tsx packages/test-harness/src/evaluate-ai.ts",
     "ai:train": "tsx scripts/train-ai-policy.ts",
     "ai:evaluate:local": "tsx scripts/evaluate-ai.ts"

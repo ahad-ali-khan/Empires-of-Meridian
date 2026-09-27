@@ -1,0 +1,338 @@
+{
+  "generatedAt": "2026-09-28",
+  "primaryModel": "gemini-3.8-flash-tts",
+  "fallbackModel": "gemini-3.8-flash-lite-tts",
+  "licenseNote": "Generated output; Google does not claim ownership under the Gemini API Additional Terms. Outputs are non-exclusive. Review current terms before commercial release.",
+  "assets": [
+    {
+      "id": "age_classical",
+      "file": "age_classical.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "48e904798ed069b775e69f706d9a5083657f66aa4578dd08716325a2fcc52c57"
+    },
+    {
+      "id": "age_industrial",
+      "file": "age_industrial.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "11e95997a09c918be9da9221197e289e42a5c11b691b7045ac3cdc20c7ce2d0b"
+    },
+    {
+      "id": "age_medieval",
+      "file": "age_medieval.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "89819826316b051400c4a919c5176c95e2da049a9a7e31da9a8a3d0760da96cd"
+    },
+    {
+      "id": "age_stone",
+      "file": "age_stone.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "6ac7611e1ea548dda5186f60d1eca417099ce7f259150b9790a16bdf1208e02b"
+    },
+    {
+      "id": "alert_building_damage",
+      "file": "alert_building_damage.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "11b7d554e6f28defe722fecb0effcc278857f8ad28332911bb4c059c4750636e"
+    },
+    {
+      "id": "alert_population",
+      "file": "alert_population.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "68ab1a84f478481c8b75f43b106dc584854b5ca813350f788a0ff86998b70bdf"
+    },
+    {
+      "id": "alert_under_attack",
+      "file": "alert_under_attack.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "c5df16cda500411ba45766278738d67981236cbeca02c1a37e18efade8cdff1f"
+    },
+    {
+      "id": "artillery_fire",
+      "file": "artillery_fire.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "892d79cea0f8f76732c429e3e8b3d428eccd7c00be9bb45667d4e7bb40971409"
+    },
+    {
+      "id": "artillery_ready",
+      "file": "artillery_ready.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "70ea3d7292d46b8a86e6039d3de423b5316764c218e7bd0af8895cb90e395e4e"
+    },
+    {
+      "id": "artillery_reload",
+      "file": "artillery_reload.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "c5017395168ada767e83c3b4dad0ecc6cd3093fc71679243cec303b148f71a1c"
+    },
+    {
+      "id": "building_complete",
+      "file": "building_complete.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "3af044c5c2143b85d93fa96c9c17244ae2c601cfd2c70b93c7dec880b5faca87"
+    },
+    {
+      "id": "cavalry_attack",
+      "file": "cavalry_attack.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "639b694e4cbfdacbe01cd0c9a7166deb6e884ad580ef4e1dfcc2ed0d20fa8aa2"
+    },
+    {
+      "id": "cavalry_move",
+      "file": "cavalry_move.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "f023484c012add07b51de3863c5281b037cb04e52d877059c84a24ad3d460229"
+    },
+    {
+      "id": "commander_attack",
+      "file": "commander_attack.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "aa292282cf27be1636356fa11dd1c867cdf6d068159bc42f17f42d5ef0b74ed8"
+    },
+    {
+      "id": "commander_build",
+      "file": "commander_build.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "d591d97dda7e809516617d2104669b465a771c66d358ea162053bb718bf72748"
+    },
+    {
+      "id": "commander_defeat",
+      "file": "commander_defeat.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "191555dbc3115c7f13f86daf6de7398d54b04bf603a2edeeb1a486fcf6031d5c"
+    },
+    {
+      "id": "commander_dispatch",
+      "file": "commander_dispatch.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "9b1a4c021ce95d4a17bb5a170223c825972a223bbd48a9849d2f250af7a67489"
+    },
+    {
+      "id": "commander_move",
+      "file": "commander_move.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "c1a1d1568eaf7e6a85a4a7a9e2ced96ca89a842f8eb169bf00854fc353a77b6a"
+    },
+    {
+      "id": "commander_ready",
+      "file": "commander_ready.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "f64af28bed5dc00a6e2e0b5190788115767bf7d7a0bad658bc70842833c633ad"
+    },
+    {
+      "id": "commander_research",
+      "file": "commander_research.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3ada081f70e5638221a159509e77e30e0f33367e9dc2490326e67d9a0efc50ed"
+    },
+    {
+      "id": "commander_victory",
+      "file": "commander_victory.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "8f8d2c4a1d3c86e834ea6cb8207c4788ac01028bb0b284d8d9fab92cd6227020"
+    },
+    {
+      "id": "defeat",
+      "file": "defeat.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "53e0b988bde6d9569a5f53d8a2e883435bb8141429e50ec7670e38d54500aabe"
+    },
+    {
+      "id": "dispatch_arrived",
+      "file": "dispatch_arrived.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "28c9886a60d703b41effce9663dfb55e51e501c88a66439ed878d02431aedc88"
+    },
+    {
+      "id": "enemy_sighted",
+      "file": "enemy_sighted.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "ad8223fe5e750c480fc567e9088d33ce14bd8a0c6297494ce519c5b7fedf0514"
+    },
+    {
+      "id": "match_pause",
+      "file": "match_pause.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "001c2c5489f93587cecdecea4d0bbb11ea952e89cd647ef80fecf29b01d5637a"
+    },
+    {
+      "id": "match_resume",
+      "file": "match_resume.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "80142dc2c582308d48879cfaa2be21fe6b9e2804f3fc5fb6eed44708d11a2e17"
+    },
+    {
+      "id": "match_start",
+      "file": "match_start.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "4467bfc9e0d702808c494a906951415088b749357cd34339844481233ec34c33"
+    },
+    {
+      "id": "research_complete",
+      "file": "research_complete.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "10dca5f648aef0dfcf28dcec755c660cf4dea790e9f91b1de91c6c2545f82075"
+    },
+    {
+      "id": "soldier_attack",
+      "file": "soldier_attack.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "94a30a3ac130533f6567c176905bd8ac06bf2a7bf549a3d656f9a860c305440d"
+    },
+    {
+      "id": "soldier_hold",
+      "file": "soldier_hold.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "da11acc3d4cdb1c94b4435aab97b95f2a2f4961d16a97ef50a21fa43bf173b7c"
+    },
+    {
+      "id": "soldier_move",
+      "file": "soldier_move.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "23213d872cfeff2b0a62066f42fea0724f589850389b7888f1cda4351f52b76d"
+    },
+    {
+      "id": "soldier_out_of_range",
+      "file": "soldier_out_of_range.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "aa7a584da2e72da73b7c524ccc78cb0e2c84a80f273795ebd29d791e2744bd95"
+    },
+    {
+      "id": "soldier_retreat",
+      "file": "soldier_retreat.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3e41c1ae307d0bc9952d134bc82c65d3013e5160c7ce4c7286e9aae77bb6aaf2"
+    },
+    {
+      "id": "soldier_target_lost",
+      "file": "soldier_target_lost.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3a577c4ddd47e8027cdb09c045988c042ed9b91b56a7eb4caf4448628245cd5d"
+    },
+    {
+      "id": "tutorial_build",
+      "file": "tutorial_build.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "693636f216204710c942512c48f01433e4e460043471cb358c2a93ffa254c967"
+    },
+    {
+      "id": "tutorial_camera",
+      "file": "tutorial_camera.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "f25a9868299ccc02c96aff31cf701fa12f1be589e4efd35aa6e4d08b0cf3ba43"
+    },
+    {
+      "id": "tutorial_complete",
+      "file": "tutorial_complete.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "800ea00a930e0f7d3580dbcfcee1a0427c8a0ab23763d17f94ea12c26cc49594"
+    },
+    {
+      "id": "tutorial_dispatch",
+      "file": "tutorial_dispatch.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "a555ed1f8f8ee6db27dcf49290072180021d8a28c043d65348853479d5f4a407"
+    },
+    {
+      "id": "tutorial_fight",
+      "file": "tutorial_fight.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "0194219de76ced379ca7737d6a625f2c002f9699a66554a560f8cb31304b959c"
+    },
+    {
+      "id": "tutorial_fog",
+      "file": "tutorial_fog.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "0ca2deef79bbf0b361f489961de9e721b774ab3ad74d8a35b2e3e8336a941d00"
+    },
+    {
+      "id": "tutorial_gather",
+      "file": "tutorial_gather.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "7be636c715af00a48f17af248edde5ed605883be213de298659896eb8493c8c7"
+    },
+    {
+      "id": "tutorial_train",
+      "file": "tutorial_train.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "f3343fa27f3c63f6c459817cbf04a664917fa24bbfdaac36ca9806270e5bb403"
+    },
+    {
+      "id": "victory",
+      "file": "victory.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "5d1acde2550a72bd3e8e60b7ae64bd1e36170f864b7ae825c07c7b79ee840938"
+    },
+    {
+      "id": "worker_build",
+      "file": "worker_build.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "8aa3c153f09646dc014b1af03e3222608c264ec58d0da7838d3c2209ba07bef5"
+    },
+    {
+      "id": "worker_chop",
+      "file": "worker_chop.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "ceeb6f40f8ce19c49e03ee0420c711881d17ad32ea8b15037d85e3af04cb08ff"
+    },
+    {
+      "id": "worker_deposit",
+      "file": "worker_deposit.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "1db712a32286b781621ed027cd8842c8211dfb9b13d259cad52f70be09f6299d"
+    },
+    {
+      "id": "worker_farm",
+      "file": "worker_farm.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "172298c8c2b630a36eeed3c55d07c75abf9ec192424ca93edca50230e7696a1b"
+    },
+    {
+      "id": "worker_fish",
+      "file": "worker_fish.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "49f8e023d6b0649ac04a83e8d39fb386f1cd243cbb785e61c56745f9ba94ae0d"
+    },
+    {
+      "id": "worker_full",
+      "file": "worker_full.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "656e84c8cfcd96865d6a2f16c17d29dcef6e92b35618ae868743b57d95d4fcbc"
+    },
+    {
+      "id": "worker_gather",
+      "file": "worker_gather.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "adec753cbc106fc20dc07d9d6594d620b1829114b86161fe6dcb2700d48dca2a"
+    },
+    {
+      "id": "worker_hunt",
+      "file": "worker_hunt.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "f3b7d1d113dbd2005b3353e27a5a831ad85d62da47fca131840f89453cc18846"
+    },
+    {
+      "id": "worker_mine",
+      "file": "worker_mine.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "b4841a01ba6a44d2935fa58595bc94b5f1c7254fea79809c54cf30c0cab4538c"
+    },
+    {
+      "id": "worker_move",
+      "file": "worker_move.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "d0b841211d1ad3e1cbf54586e299614558085a7205db19f55ecf5995602bba16"
+    },
+    {
+      "id": "worker_no_resource",
+      "file": "worker_no_resource.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "802244692810b143af7d359f823852f9e4e271144cbb670a9f8a2d691160f5ee"
+    },
+    {
+      "id": "worker_repair",
+      "file": "worker_repair.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "51f9c3547874172fcf972ecba24393e9aa05c4033798c70c072fcb4295b73704"
+    }
+  ]
+}

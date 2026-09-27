@@ -29,6 +29,8 @@ export type AudioEventId =
   | 'weather.lightning'
   | 'match.victory';
 
+export type VoiceAssetId = string;
+
 type Tone = {frequency: number; duration: number; type?: OscillatorType; gain?: number; slide?: number};
 
 const tones: Record<AudioEventId, Tone[]> = {
@@ -66,6 +68,7 @@ const tones: Record<AudioEventId, Tone[]> = {
 let context: AudioContext | undefined;
 let master: GainNode | undefined;
 let lastPlayed = new Map<AudioEventId, number>();
+let lastVoice = new Map<VoiceAssetId, number>();
 
 function getContext() {
   if (typeof window === 'undefined') return undefined;
@@ -125,4 +128,25 @@ export function audioForSimulationEvent(kind: string, text: string) {
 
 export function resetAudioThrottle() {
   lastPlayed = new Map();
+}
+
+export function voiceForSimulationEvent(kind: string, text: string) {
+  const value = `${kind} ${text}`.toLowerCase();
+  if (kind === 'victory' || value.includes('wins by conquest')) return 'victory';
+  if (kind === 'combat' && value.includes('destroyed')) return 'enemy_sighted';
+  if (kind === 'build' && value.includes('completed')) return 'building_complete';
+  if (kind === 'train') return 'soldier_move';
+  if (kind === 'age' && value.includes('advanced')) return `age_${value.includes('4') ? 'industrial' : value.includes('3') ? 'medieval' : 'classical'}`;
+  if (kind === 'dispatch') return 'dispatch_arrived';
+  if (kind === 'gather' && value.includes('no matching')) return 'worker_no_resource';
+  return undefined;
+}
+
+export function playVoice(id: VoiceAssetId, volume = 0.7) {
+  const now = performance.now();
+  if (now - (lastVoice.get(id) ?? -Infinity) < 900) return;
+  lastVoice.set(id, now);
+  const audio = new Audio(`/audio/voices/${id}.wav`);
+  audio.volume = Math.max(0, Math.min(1, volume));
+  void audio.play().catch(() => undefined);
 }

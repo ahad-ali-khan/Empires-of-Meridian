@@ -16,7 +16,7 @@ import {Showcase} from './renderer/showcase';
 import {Minimap} from './Minimap';
 import {MatchRenderer} from './renderer/match';
 import {getSave, putSave} from './sim/save-store';
-import {audioForSimulationEvent, playAudio} from './audio';
+import {audioForSimulationEvent, playAudio, playVoice, voiceForSimulationEvent} from './audio';
 
 type Screen = 'menu' | 'setup' | 'game' | 'credits';
 type ClientCommand = Command extends infer C
@@ -77,6 +77,7 @@ export function GameApp() {
               onClick={() => {
                 sessionStorage.removeItem('load-meridian');
                 setConfig((c) => ({...c, mode: 'tutorial', difficulty: 'relaxed', aiCount: 1}));
+                playVoice('commander_ready', 0.62);
                 setScreen('game');
               }}
             >
@@ -90,6 +91,7 @@ export function GameApp() {
                 if (save) {
                   setConfig(JSON.parse(save.state).config);
                   sessionStorage.setItem('load-meridian', '1');
+                  playVoice('commander_ready', 0.62);
                   setScreen('game');
                 }
               }}
@@ -174,6 +176,7 @@ export function GameApp() {
                 onClick={() => {
                   sessionStorage.removeItem('load-meridian');
                   setConfig({...config, mode: 'skirmish'});
+                  playVoice('commander_ready', 0.62);
                   setScreen('game');
                 }}
               >
@@ -233,6 +236,10 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                 ? 'ui.command.garrison'
                 : 'ui.command.accepted';
     playAudio(commandCue);
+    if (command.type === 'gather') playVoice('worker_gather', 0.58);
+    else if (command.type === 'move' || command.type === 'rally') playVoice('commander_move', 0.5);
+    else if (command.type === 'attack') playVoice('commander_attack', 0.52);
+    else if (command.type === 'build' || command.type === 'resume-build') playVoice('commander_build', 0.5);
   };
   useEffect(() => {
     const w = new Worker(new URL('./sim/match.worker.ts', import.meta.url), {type: 'module'});
@@ -253,6 +260,8 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         if (seen.has(`${e.tick}:${e.kind}:${e.text}`)) continue;
         const cue = audioForSimulationEvent(e.kind, e.text);
         if (cue) playAudio(cue);
+        const voice = voiceForSimulationEvent(e.kind, e.text);
+        if (voice) playVoice(voice, 0.62);
       }
       const oldShots = new Set(previous?.projectiles.map((p) => p.id));
       const newShots = new Set(snap.projectiles.map((p) => p.id));
@@ -522,6 +531,11 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     'Keep gathering provisions and timber. Advance with 500 provisions and 300 timber.',
     'Scout with your Explorer. Reinforce your army, then conquer the rival settlement.',
   ];
+  useEffect(() => {
+    if (config.mode !== 'tutorial') return;
+    const tutorialVoice = ['tutorial_camera', 'tutorial_gather', 'tutorial_build', 'tutorial_train', 'tutorial_fight', 'tutorial_dispatch'][tutorial];
+    if (tutorialVoice) playVoice(tutorialVoice, 0.65);
+  }, [config.mode, tutorial]);
   useEffect(() => {
     if (config.mode !== 'tutorial' || !snapshot) return;
     const done = [
