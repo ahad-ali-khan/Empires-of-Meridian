@@ -120,7 +120,7 @@ export function buildPerson(villager=false,mounted=false,crew=false,female=false
     // The head lies in the swing plane (YZ): the tapered forward point leads.
     beam(pick,[0,.54,-.08],[0,.49,-.30],.048,'#697774',.003);beam(pick,[0,.54,.06],[0,.43,.30],.048,'#87938d',.003);box(pick,.075,.10,.15,0,.53,0,'#68746e');
     const hoe=joint(workTool,'hoeTool');beam(hoe,[0,-0.30,0],[0,1.20,0],0.022,'#806343');box(hoe,0.24,0.05,0.17,0,1.22,0.07,'#73817b');
-    const axe=joint(workTool,'axeTool');beam(axe,[0,-.30,0],[0,.57,0],.022,C.wood);const blade=new T.Shape();blade.moveTo(0,.43);blade.lineTo(.26,.34);blade.quadraticCurveTo(.33,.52,.24,.68);blade.lineTo(0,.57);blade.closePath();const bladeMesh=mesh(new T.ExtrudeGeometry(blade,{depth:.035,bevelEnabled:false}),mat('#89928c',.4,.6),axe);bladeMesh.rotation.y=Math.PI/2;
+    const axe=joint(workTool,'axeTool');beam(axe,[0,-.30,0],[0,.57,0],.022,C.wood);const blade=new T.Shape();blade.moveTo(0,.43);blade.lineTo(.26,.34);blade.quadraticCurveTo(.33,.52,.24,.68);blade.lineTo(0,.57);blade.closePath();const bladeMesh=mesh(new T.ExtrudeGeometry(blade,{depth:.035,bevelEnabled:false}),mat('#89928c',.4,.6),axe);bladeMesh.rotation.y=-Math.PI/2;
     const knife=joint(workTool,'knifeTool');beam(knife,[0,-.12,0],[0,.04,0],.025,C.wood);const knifeBlade=mesh(new T.ConeGeometry(.035,.22,4),mat('#bec4b9',.3,.6),knife,0,.15,0);knifeBlade.scale.z=.25;
     const hammer=joint(workTool,'hammerTool');beam(hammer,[0,-.15,0],[0,.3,0],.022,C.wood);box(hammer,.2,.09,.09,0,.3,0,C.dark);
     const basket=joint(body,'basket',-.28,.93,.06);cyl(basket,.13,.10,.20,0,0,0,C.wood,12);for(let i=0;i<7;i++)oval(basket,Math.sin(i*2.4)*.075,.11,Math.cos(i*2.4)*.075,.035,.03,.035,'#a2493d');
@@ -209,19 +209,20 @@ function armTo(rig:Map<string,T.Object3D>,side:number,target:T.Vector3){
 }
 function showPart(object:T.Object3D|undefined,visible:boolean){object?.traverse(o=>o.visible=visible);}
 export function animateAsset(root:T.Object3D,t:number,clip:Clip='idle'){
+  const ram=root.getObjectByName('ramBeam');if(ram){const phase=(t%1.75)/1.75;ram.position.z=clip==='attack'?(phase<.65?-.45*phase/.65:phase<.8?-.45+(phase-.65)/.15*.85:.4*(1-(phase-.8)/.2)):0;}
   const crown=root.getObjectByName('fallenCrown');if(crown){const f=T.MathUtils.smoothstep(t,0,1.5);crown.rotation.z=f*Math.PI/2;crown.position.y=f*crown.userData.landY;}
   if(root.name==='sapperTeam'){root.children.forEach(child=>animateAsset(child,t,clip));return;}
   if(root.name==='cannon'||root.userData.artillery){
-    const phase=t%7,loader=root.getObjectByName('loader'),rammer=root.getObjectByName('rammer');
-    const loading=phase<1?phase:phase<2?1:phase<3?3-phase:0;
+    const active=clip==='attack'||clip==='fire',phase=active?t%7:0,loader=root.getObjectByName('loader'),rammer=root.getObjectByName('rammer');
+    const loading=active?(phase<1?phase:phase<2?1:phase<3?3-phase:0):0;
     const ramming=phase<2?0:phase<2.6?(phase-2)/.6:phase<4.2?1:phase<5?(5-phase)/.8:0;
-    if(loader){loader.position.set(-1.15+loading*1.55,0,-.68+loading*2.67);loader.rotation.y=loading>.99?-2.17:loading>0?.53:Math.PI/2;animateAsset(loader,t,clip==='walk'||loading>0&&loading<1?'walk':'load');showPart(loader.getObjectByName('ammo'),phase<2);}
-    if(rammer){rammer.position.set(1.23-ramming*.85,0,.46+ramming*1.89);rammer.rotation.y=ramming>.99?-Math.PI/2:-.42;animateAsset(rammer,t,clip==='walk'||ramming>0&&ramming<1?'walk':'ram');}
-    const swab=root.getObjectByName('swab');if(swab){showPart(swab,clip!=='walk'&&ramming>.99);swab.position.z=2.4+Math.sin((phase-2.6)*Math.PI*3)*.13;}
+    if(loader){loader.position.set(-1.15+loading*1.55,0,-.68+loading*2.67);loader.rotation.y=loading>.99?-2.17:loading>0?.53:Math.PI/2;animateAsset(loader,t,!active?clip:loading>0&&loading<1?'walk':'load');showPart(loader.getObjectByName('ammo'),active&&phase<2);}
+    if(rammer){rammer.position.set(1.23-ramming*.85,0,.46+ramming*1.89);rammer.rotation.y=ramming>.99?-Math.PI/2:-.42;animateAsset(rammer,t,!active?clip:ramming>0&&ramming<1?'walk':'ram');}
+    const swab=root.getObjectByName('swab');if(swab){showPart(swab,active&&ramming>.99);swab.position.z=2.4+Math.sin((phase-2.6)*Math.PI*3)*.13;}
     for(const [crew,side] of [[loader,-1],[rammer,1]] as const)if(crew){crew.userData.pushing=clip==='walk';if(clip==='walk'){crew.position.set(side*1.0,0,-.62);crew.rotation.y=0;animateAsset(crew,t,'walk');showPart(crew.getObjectByName('ammo'),false);}}
     root.traverse(o=>{if(o.name.startsWith('cannonWheel'))o.rotation.x=clip==='walk'?t*1.4:0;});
-    const barrel=root.getObjectByName('barrel');if(barrel)barrel.position.z=0.15-(clip!=='walk'&&phase>=5?0.28*Math.exp(-(phase-5)*10):0);
-    const flash=root.getObjectByName('muzzleFlash');showPart(flash,clip!=='walk'&&phase>5&&phase<5.11);
+    const barrel=root.getObjectByName('barrel');if(barrel)barrel.position.z=0.15-(active&&phase>=5?0.28*Math.exp(-(phase-5)*10):0);
+    const flash=root.getObjectByName('muzzleFlash');showPart(flash,active&&phase>5&&phase<5.11);
     animateShot(root,t,clip==='fire'||clip==='attack');return;
   }
   let rig=rigs.get(root);if(!rig){rig=new Map();root.traverse(o=>{if(o.name)rig!.set(o.name,o);});rigs.set(root,rig);}
@@ -256,7 +257,8 @@ export function animateAsset(root:T.Object3D,t:number,clip:Clip='idle'){
       showPart(rig.get('pickTool'),mining);showPart(rig.get('hoeTool'),farming);showPart(rig.get('axeTool'),chopping);showPart(rig.get('knifeTool'),clip==='process');showPart(rig.get('hammerTool'),clip==='build');
       showPart(rig.get('basket'),clip==='gather'||clip==='carry');showPart(rig.get('castNet'),clip==='fish');
       if(mining||farming||chopping||clip==='build'){
-        if(mining||chopping||clip==='build'){const f=(t%2.4)/2.4;const swing=f<0.5?-0.65+f*0.5:f<0.67?-0.4+(f-0.5)/0.17*2.55:2.15-(f-0.67)/0.33*2.8;workTool.position.set(0.03,1.40-Math.max(0,swing)*.07,0.20);workTool.rotation.set(swing,0,0.06);}
+        if(chopping){const phase=t%2.4/2.4,swing=phase<.5?-.85+phase*.6:phase<.68?-.55+(phase-.5)/.18*1.55:1-(phase-.68)/.32*1.85;workTool.position.set(.03,1.12,.40);workTool.rotation.set(swing,0,.06);}
+        else if(mining||clip==='build'){const f=(t%2.4)/2.4;const swing=f<0.5?-0.65+f*0.5:f<0.67?-0.4+(f-0.5)/0.17*2.55:2.15-(f-0.67)/0.33*2.8;workTool.position.set(0.03,1.40-Math.max(0,swing)*.07,0.20);workTool.rotation.set(swing,0,0.06);}
         else{workTool.position.set(0.03,1.24,0.19+Math.sin(t*2.2)*0.04);workTool.rotation.set(2.86+Math.sin(t*2.2)*0.04,0,0.03);}
         armTo(rig,1,new T.Vector3(0,-0.10,0).applyQuaternion(workTool.quaternion).add(workTool.position));
         armTo(rig,-1,new T.Vector3(0,0.12,0).applyQuaternion(workTool.quaternion).add(workTool.position));

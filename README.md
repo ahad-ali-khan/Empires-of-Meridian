@@ -1,8 +1,8 @@
 # Empires of Meridian
 
-An original browser-based real-time strategy visual prototype built with React, Three.js, TypeScript, and Vite.
+An original browser-based real-time strategy game in development, built with React, Three.js, TypeScript, and Vite.
 
-The current prototype is a visual showcase, not a complete playable RTS. It includes a procedurally placed coastal settlement, original procedural assets, weather, water, wildlife, animated units, and an asset inspection view.
+The default route contains the offline tutorial and skirmish prototype. The original Temperate Coast showcase and Asset Forge remain at `/dev/forge` in development. Milestone 1 is still in progress; its full match, AI evaluation, cross-browser determinism, and hardware performance release gates have not been certified.
 
 ## Requirements
 
@@ -22,6 +22,7 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
 ```sh
 pnpm typecheck
+pnpm test:unit
 pnpm test
 pnpm build
 ```
@@ -30,17 +31,27 @@ pnpm build
 
 ## Controls
 
-- Drag: orbit the camera
+- Drag empty terrain: orbit the camera
+- Shift-drag: box-select units; Shift-click: add to selection
 - Scroll: zoom
-- WASD or arrow keys: pan
-- Click a building: open its asset preview
+- WASD or middle-drag: pan
+- Click: select a unit, building, or resource
+- Right-click: contextual work, combat, movement, construction, or garrison order
+- With a production building selected, right-click: set its rally point
+- Ctrl/Cmd + 1–9: assign a control group; 1–9: select it
+- Space: focus selection; X: stop
 
-The Field Lens selects lighting, weather, animation, and render quality. The Asset Forge exposes each procedural model and its available animation states.
+In the development showcase, the Field Lens selects lighting, weather, animation, and render quality. The Asset Forge exposes procedural models and their animation states. Match setup offers seed, map size, fog, population, speed, and AI difficulty. Farms accept two workers. Completed central halls and forts can shelter villagers; their selection panel releases the garrison.
 
 ## Project layout
 
 ```text
-apps/web/                 React and Three.js showcase
+apps/web/                 Offline game, simulation worker, showcase and Forge
+apps/api/                 Development HTTP service
+apps/game-server/         Transport foundation
+packages/sim/            Fixed-tick economy, navigation, combat and AI
+packages/protocol/       Commands, saves and worker messages
+packages/content/        Gameplay definitions
 packages/asset-tools/     Original procedural models and animation rigs
 tests/                    Placement, geometry, and animation regression tests
 data.md                   Product and game design brief
@@ -66,4 +77,4 @@ sudo xcodebuild -license
 
 ## Status
 
-This is the art and rendering prototype phase. Economy, combat, pathfinding, networking, and full RTS gameplay are not implemented yet.
+The project is now an offline playable vertical slice with fixed-tick economy, combat, pathfinding, production, saves, fog, and an actively evaluated AI opponent. Multiplayer remains foundation work; full release gates for cross-browser determinism, AI balance, and sustained hardware performance are still open.

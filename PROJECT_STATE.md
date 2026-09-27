@@ -1,8 +1,12 @@
 # Empires of Meridian
 
-Current scope: **visual review prototype**, requested by the user before implementation of the complete game. The latest instruction deliberately prioritizes art before the brief's Milestone 0. No milestone gate is claimed passed.
+Current scope: **offline gameplay implementation and playtest repair**. The default route is the tutorial/skirmish prototype; the original coast showcase and Asset Forge remain at `/dev/forge`. No milestone release gate is claimed passed. See `docs/PLAYTEST_REPAIR_2026-09-18.md` for current changes, regression evidence and remaining verification.
 
-Implemented: a local Three.js settlement and Asset Forge with 89 original procedural assets, articulated animation previews, resource demonstrations, and weather.
+September 19 continuation: map generation is version 5 with three seed-driven macro terrain recipes and distant start rotation. Buildings/resources use shared square simulation bounds; work, garrison and drop-off orders choose legal perimeter points. Group recovery now measures actual displacement and a 48-unit obstruction regression passes. Building placement renders the authored translucent model, supports Q/E rotation, and applies the same rotated footprint to validation and navigation. The playable content registry now exposes Stone through Industrial definitions and all registered unit/building models validate at their unlock age. See `docs/WORLD_SCALE_MAP_AND_AUDIO_DIRECTION_2026-09-19.md` for scale, battlefield grammar, metrics and the recommended audio workflow.
+
+Implemented: a local Three.js settlement and Asset Forge with original procedural assets, articulated animation previews, resource demonstrations, weather, and an actively developed deterministic offline match.
+
+Current verification slice: `pnpm typecheck`, `pnpm test:unit`, and `pnpm ai:evaluate:local`. The offline AI now records target, route, and resource-focus telemetry; the local evaluator runs 12 deterministic small-map matches and reports strategy/route/target variety. Multiplayer remains a foundation fixture, not a release-ready authoritative service.
 
 - [ ] Milestone 0: foundation, deterministic fixtures, services, CI
 - [ ] Milestone 1: offline vertical slice
@@ -23,4 +27,4 @@ Implemented: a local Three.js settlement and Asset Forge with 89 original proced
 
 Validation: `pnpm test` — 17 passing checks, including all default asset factories, 100 layout seeds, age restrictions, building proportions, damage topology, tool grips, projectile visibility and net landing. `pnpm build` passes, with Vite's existing bundle-size advisory. Native Chrome inspection confirmed the live settlement and Forge; the final damage and scale revisions still need a complete visual sweep. Chrome control was interrupted by active user interaction. A single 60 FPS HUD observation is not a hardware benchmark or a sustained performance guarantee.
 
-The resource sandbox is a visual demonstration. Deterministic economy/combat, navigation, production queues, multiplayer, saves and full playable matches remain unimplemented. No milestone gate is claimed passed.
+The September 17 section above is historical. Fixed-tick economy/combat, navigation, production, local saves and the offline match shell now have implementations under active playtest. Multiplayer and the complete Milestone 1 acceptance gates remain unfinished.

@@ -87,15 +87,15 @@ export function createWorld(renderer:T.WebGLRenderer,seed=SEED){
  for(const a of actors)if(['sheep','deer','wolf'].includes(a.model.name))a.life={health:40,food:a.model.name==='wolf'?0:80,state:'alive'};
  const woodPosition=new T.Vector3(-46,height(-46,12),12),woodStates=[buildTree(127),buildFelledTree(127),buildAsset('stump')];woodStates.forEach((m,i)=>{m.position.copy(woodPosition);m.visible=i===0;group.add(m);});
  const woodWorker=actor('villager',-46,13.1,'chop');woodWorker.rotation.y=Math.PI;
- let woodRemaining=100,fallStarted=-1,foodCollected=0,woodCollected=0,action='Ready',hunt:{hunter:Actor;prey:Actor;collector:Actor;hitAt:number;started:number}|null=null;
+ let woodRemaining=100,fallStarted=-1,foodCollected=0,woodCollected=0,action='Ready',hunt:{hunter:Actor;prey:Actor;collector:Actor;nextHitAt:number;started:number}|null=null;
  const demoWorker=actors.find(a=>a.model.userData.villager&&a.clip==='walk')!;
  function huntAnimal(kind:'sheep'|'deer',hunterKind:AssetKind='villager'){
   const prey=actors.find(a=>a.model.name===kind&&a.life?.state==='alive');if(!prey){action='No living '+kind+' remain';return null;}
   const hunter=hunterKind==='villager'?demoWorker:actors.find(a=>a.model.name===hunterKind)||demoWorker;
-  hunter.path=0;prey.path=0;prey.clip='idle';hunt={hunter,prey,collector:demoWorker,hitAt:0,started:-1};action='Approaching '+kind;return prey.model.position.clone();
+  hunter.path=0;prey.path=0;prey.clip='idle';hunt={hunter,prey,collector:demoWorker,nextHitAt:Infinity,started:-1};action='Closing on '+kind;return prey.model.position.clone();
  }
  function resetResources(){setOreRemaining(100);woodRemaining=100;foodCollected=woodCollected=0;hunt=null;action='Resources restored';for(const a of actors)if(a.life){a.life={health:40,food:a.model.name==='wolf'?0:80,state:'alive'};a.model.visible=true;a.model.traverse(o=>o.visible=true);a.clip=a.model.name==='wolf'?'walk':'graze';}}
- function approach(a:Actor,target:T.Vector3,dt:number,distance=1.0){const delta=target.clone().sub(a.model.position);delta.y=0;const d=delta.length();a.model.rotation.y=Math.atan2(delta.x,delta.z);if(d>distance){a.model.position.addScaledVector(delta.normalize(),Math.min(d-distance,dt*2.4));a.model.position.y=height(a.model.position.x,a.model.position.z);a.clip='walk';return false;}return true;}
+ function approach(a:Actor,target:T.Vector3,dt:number,distance=1.0,speed=2.4){const delta=target.clone().sub(a.model.position);delta.y=0;const d=delta.length();a.model.rotation.y=Math.atan2(delta.x,delta.z);if(d>distance){a.model.position.addScaledVector(delta.normalize(),Math.min(d-distance,dt*speed));a.model.position.y=height(a.model.position.x,a.model.position.z);a.clip='walk';return false;}return true;}
  function demoUpdate(t:number,dt:number){
   if(woodRemaining>50)fallStarted=-1;
   if(woodRemaining>0){const before=woodRemaining;woodRemaining=Math.max(0,woodRemaining-dt*2);woodCollected+=before-woodRemaining;}woodStates.forEach((m,i)=>m.visible=i===(woodRemaining>50?0:woodRemaining>0?1:2));
@@ -104,19 +104,28 @@ export function createWorld(renderer:T.WebGLRenderer,seed=SEED){
   if(hunt){const {hunter,prey,collector}=hunt,life=prey.life!;
    if(life.state==='alive'){
     if(hunt.started<0)hunt.started=t;
-    const ranged=hunter.model.userData.villager||hunter.model.name==='infantry';
+    const mounted=Boolean(hunter.model.userData.mounted),ranged=hunter.model.userData.villager||hunter.model.name==='infantry';
+    const range=ranged?5.2:mounted?2.35:1.35;
     if(prey.model.name==='deer'){
-     const elapsed=t-hunt.started,cycle=Math.floor(elapsed/4.8),running=elapsed%4.8<1.6;
+     const elapsed=t-hunt.started,cycle=Math.floor(elapsed/4.8),running=life.health<40&&elapsed%4.8<1.6;
      prey.clip=running?'flee':'graze';
      if(running){const angle=cycle*2.4+prey.phase;prey.model.rotation.y=angle;prey.model.position.x+=Math.sin(angle)*dt*3.8;prey.model.position.z+=Math.cos(angle)*dt*3.8;prey.model.position.y=height(prey.model.position.x,prey.model.position.z);}
     }
-    if(approach(hunter,prey.model.position,dt,ranged?5:1.3)){
+    if(approach(hunter,prey.model.position,dt,range,5.2)){
      const clip=hunter.model.userData.villager?'hunt':'attack';
-     if(hunter.clip!==clip){hunter.phase=-t;hunt.hitAt=t+1.65;}
-     hunter.clip=clip;action='Hunting '+prey.model.name;
-     if(t>=hunt.hitAt){damageAnimal(life,20);hunt.hitAt=t+3;}
+     if(hunter.clip!==clip){
+      hunter.phase=-t;
+      const target=prey.model.position.clone().add(new T.Vector3(0,.78,0));hunter.model.userData.shotTarget=target;
+      const shot=hunter.model.userData.shot as {release:number;period:number;type:string}|undefined;
+      const speed=shot?.type==='grenade'?4:shot?.type==='shell'?9:12;
+      const travel=shot?T.MathUtils.clamp(hunter.model.position.distanceTo(target)/speed,.14,.9):0;
+      hunt.nextHitAt=t+(shot?.release??.55)+travel;
+     }
+     hunter.clip=clip;action='Aiming at '+prey.model.name;
+     hunter.model.userData.shotTarget=prey.model.position.clone().add(new T.Vector3(0,.78,0));
+     if(t>=hunt.nextHitAt){damageAnimal(life,20);const shot=hunter.model.userData.shot as {period:number}|undefined;hunt.nextHitAt+=shot?.period??1.6;action=mounted?'Lance strike on '+prey.model.name:'Projectile hit '+prey.model.name;}
      if(life.health===0){prey.clip='dead';prey.model.userData.deathDirection=rand()*Math.PI*2;hunter.clip='idle';}
-    }else hunt.hitAt=0;
+    }else {hunter.clip='walk';action='Closing on '+prey.model.name;}
    }
    else if(life.state==='dead'){if(approach(collector,prey.model.position,dt,.75)){collector.clip='process';action='Collecting meat';foodCollected+=collectMeat(life,dt*8);}}
    else{prey.model.traverse(o=>o.visible=false);collector.clip='idle';action='Food collected';hunt=null;}

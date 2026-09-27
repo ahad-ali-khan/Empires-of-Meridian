@@ -8,6 +8,8 @@ import {setResourceLevel} from '../packages/asset-tools/src/nature';
 import {clipsFor} from '../packages/asset-tools/src/extended';
 import {eras,agesFor,militiaUpgrade} from '../packages/asset-tools/src/ages';
 import {applyCondition} from '../packages/asset-tools/src/presentation';
+import {buildingFootprint,buildingFootprints} from '../packages/asset-tools/src/footprints';
+import {animateShot} from '../packages/asset-tools/src/combat';
 
 test('rifle hands track authored grips across aiming and reload',()=>{
  for(const kind of ['infantry','veteranRifle'] as const){const model=buildAsset(kind);
@@ -52,10 +54,15 @@ test('100 seeded layouts keep full building footprints dry and reservations disj
   expect(layout.allowsDecoration(layout.farm.x,layout.farm.z,1.9,true)).toBe(false);
   expect(layout.allowsDecoration(layout.farm.x+layout.farm.hx+.5,layout.farm.z,1.9,true)).toBe(false);
   expect(layout.allowsDecoration(layout.plaza.x,layout.plaza.z,.1)).toBe(false);
+  for(const building of layout.buildings){const footprint=buildingFootprint(building.kind);expect(building.hx,building.kind).toBeGreaterThanOrEqual(footprint.hx);expect(building.hz,building.kind).toBeGreaterThanOrEqual(footprint.hz);}
   const rand=random(seed);let valid=true;for(let n=0;n<500;n++){const x=rand()*130-65,z=rand()*130-65;if(layout.allowsDecoration(x,z,2.6,true))valid&&=layout.reserved.every(r=>!overlaps({x,z,hx:2.6,hz:2.6},r));}expect(valid).toBe(true);
   for(let i=0;i<24;i++){const a=i/24*Math.PI*2,x=layout.fish.x+Math.cos(a)*layout.fish.radius,z=layout.fish.z+Math.sin(a)*layout.fish.radius;expect(x).toBeGreaterThan(coast(z));}
  }
  expect(createLayout(240917).buildings).toEqual(createLayout(240917).buildings);
+});
+
+test('building footprints are stable across every available age',()=>{
+ for(const kind of Object.keys(buildingFootprints)){const expected=buildingFootprint(kind);for(const age of agesFor(kind)){const model=buildAsset(kind as AssetKind,age);expect(model.userData.footprint).toEqual(expected);}}
 });
 
 test('placement rejects shallow corners, excessive slope, and occupied land',()=>{
@@ -135,6 +142,13 @@ test('hunter uses ranged weapons by age and releases visible projectiles',()=>{
   animateAsset(worker,0,'idle');expect(worker.getObjectByName('heldWeapon')!.visible).toBe(false);
  }
  for(const kind of ['archer','crossbow','grenadier','infantry','cannon','frigate'] as const){const model=buildAsset(kind),shot=model.userData.shot;expect(shot,kind).toBeDefined();animateAsset(model,shot.release+.15,kind==='cannon'?'fire':'attack');expect(model.getObjectByName('projectile')!.visible,kind).toBe(true);}
+});
+
+test('targeted projectiles finish at the hunted animal rather than a fixed forward ray',()=>{
+ const hunter=buildAsset('villager',3),target=new T.Vector3(3.2,.82,4.7);hunter.userData.shotTarget=target;
+ animateShot(hunter,0,true);animateShot(hunter,2.2,true);hunter.updateMatrixWorld(true);
+ expect(hunter.getObjectByName('projectile')!.getWorldPosition(new T.Vector3()).distanceTo(target)).toBeLessThan(.001);
+ const lancer=buildAsset('cavalry');animateAsset(lancer,.55,'attack');expect(lancer.getObjectByName('lance')!.position.distanceTo(new T.Vector3(.62,1.88,.06))).toBeGreaterThan(.1);
 });
 
 test('damage retains drawable building structure and clear removes it',()=>{

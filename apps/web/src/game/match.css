@@ -1,0 +1,286 @@
+.selection-marquee {
+  position: absolute;
+  border: 1px solid #ecd599;
+  background: #d9c17b20;
+  box-shadow: 0 0 0 1px #142d26aa;
+  pointer-events: none;
+  z-index: 4;
+}
+.selection-marquee[hidden] {
+  display: none;
+}
+.coast-backdrop {
+  position: absolute;
+  inset: 0;
+}
+.coast-backdrop canvas {
+  display: block;
+}
+.menu-shell .menu-backdrop {
+  background: linear-gradient(90deg, #102019ee 0%, #102019c7 33%, #10201935 75%);
+  filter: none;
+}
+.menu-shell .main-menu h1 {
+  max-width: 650px;
+  font-size: clamp(46px, 6vw, 82px);
+  line-height: 1.05;
+}
+.menu-shell {
+  overflow-y: auto;
+  align-items: start;
+}
+.menu-shell .main-menu {
+  margin-block: 24px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding-block: 20px;
+}
+.setup-card {
+  padding-bottom: 18px;
+}
+.menu-shell .main-menu > p:not(.eyebrow) {
+  max-width: 400px;
+  line-height: 1.65;
+  font-size: 15px;
+}
+.match-canvas canvas {
+  display: block;
+  outline: none;
+}
+.match-controls {
+  position: absolute;
+  bottom: 198px;
+  left: 238px;
+  right: 238px;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: #f0e6c9;
+  text-shadow: 0 1px 3px #10231b;
+  pointer-events: none;
+}
+.match-shell .top-hud {
+  top: 0;
+  left: 0;
+  right: 0;
+  gap: 0;
+  background: linear-gradient(#1a2a24f5, #16241eed);
+  border-bottom: 1px solid #ba995c80;
+  box-shadow: 0 4px 18px #0004;
+  padding: 7px 14px;
+}
+.match-shell .top-hud > div,
+.match-shell .top-hud time,
+.match-shell .crest-button {
+  background: none;
+  box-shadow: none;
+  border: 0;
+  border-right: 1px solid #b9a57438;
+  min-width: 100px;
+}
+.match-shell .crest-button {
+  min-width: 50px;
+}
+.match-shell .top-hud strong {
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+.match-shell .command-panel {
+  border: 1px solid #ad945d88;
+  background: linear-gradient(110deg, #16271ff5, #20352bf0);
+  box-shadow: 0 6px 25px #0005;
+  border-radius: 3px;
+  min-height: 165px;
+}
+.match-shell .command-grid button {
+  font-size: 12px;
+  transition: background 0.15s;
+  border-color: #a88b4f66;
+  background: #35493666;
+}
+.match-shell .command-grid button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.match-shell .command-grid small {
+  font-size: 9px;
+  line-height: 1.5;
+}
+.match-shell .tutorial-card {
+  left: 22px;
+  top: 84px;
+  transform: none;
+  min-width: 0;
+  width: 310px;
+  text-align: left;
+  border-left: 3px solid #d4b45e;
+  background: #14271eea;
+  line-height: 1.6;
+  box-shadow: 0 6px 20px #0003;
+}
+.match-shell .tutorial-card strong {
+  font-size: 13px;
+  font-weight: 400;
+}
+.match-shell .toast {
+  bottom: 226px;
+  background: #17291ee8;
+  border: 1px solid #c5b37b55;
+  border-radius: 3px;
+  max-width: 440px;
+  text-align: center;
+}
+.match-shell .minimap {
+  cursor: crosshair;
+  border-width: 2px;
+  border-color: #b2a071;
+  background: linear-gradient(105deg, #75805c 0 84%, #b9ad84 84% 88%, #5b9b9f 88%);
+  border-radius: 3px;
+}
+.match-shell .side-actions button {
+  background: #1a3028e8;
+  border-color: #8d7c5166;
+  font-size: 11px;
+}
+.match-shell button:focus-visible {
+  outline: 2px solid #efd28b;
+  outline-offset: 2px;
+}
+.match-shell .tutorial-focus {
+  display: block;
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid #bfa86d88;
+  color: #efd28b;
+  padding: 5px 13px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.side-actions small {
+  display: block;
+  font-size: 9px;
+  color: #c7b780;
+  margin-top: 4px;
+}
+.production-list {
+  font-size: 11px;
+  max-height: 65px;
+  overflow: auto;
+  line-height: 1.4;
+}
+.building-world-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  color: #f4e8bf;
+  background: #15281ee8;
+  padding: 5px 9px;
+  border: 1px solid #ad996799;
+  border-radius: 3px;
+  min-width: 110px;
+  font-size: 10px;
+  z-index: 3;
+  text-align: center;
+  width: 190px;
+  box-sizing: border-box;
+}
+.building-world-label small {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.35;
+  max-height: 54px;
+  overflow: hidden;
+}
+.building-world-label[hidden] {
+  display: none;
+}
+.building-world-label progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: 4px;
+  accent-color: #d9bc70;
+}
+.tactical-map {
+  height: auto !important;
+  background: #11211f !important;
+  display: flex;
+  flex-direction: column;
+}
+.tactical-map canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  cursor: crosshair;
+}
+.tactical-map small {
+  font-size: 8px;
+  padding: 4px;
+  text-align: center;
+  color: #cdbd94;
+}
+.minimap-toolbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 4px;
+  border-bottom: 1px solid #9d885355;
+}
+.minimap-toolbar button {
+  border: 0;
+  color: #e7d7ad;
+  background: transparent;
+  font-size: 10px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tactical-map.expanded {
+  width: 360px !important;
+  z-index: 6;
+}
+.rally-hint {
+  font-size: 10px;
+  color: #d6c497;
+  padding: 5px;
+  line-height: 1.5;
+}
+.rally-hint small {
+  color: #7ed9bb;
+}
+.advancement {
+  padding: 9px;
+  background: #172a21;
+  border: 1px solid #a08c59;
+  font-size: 12px;
+}
+.advancement progress {
+  display: block;
+  width: 100%;
+  accent-color: #d2b570;
+}
+.command-panel .selection-info {
+  overflow: auto;
+  max-height: 178px;
+}
+@media (max-width: 1100px) {
+  .match-shell .top-hud > div {
+    min-width: 68px;
+    padding: 6px;
+  }
+  .match-shell .top-hud strong {
+    font-size: 16px;
+  }
+  .match-controls {
+    left: 180px;
+    right: 180px;
+    font-size: 8px;
+  }
+  .match-shell .tutorial-card {
+    width: 250px;
+  }
+  .match-shell .toast {
+    bottom: 219px;
+  }
+}

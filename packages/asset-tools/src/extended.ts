@@ -165,7 +165,7 @@ export function buildExtended(kind:ExtraKind,base:(kind:string)=>T.Group,age=4):
  g=new T.Group();const chassis=joint(g,'chassis');for(const x of [-.68,.68])for(const z of [-.8,.8])wheel(chassis,x,.52,z);box(chassis,1.5,.18,2.6,0,.65,0,C.wood);for(const x of [-.7,.7])box(chassis,.08,.46,2.6,x,.94,0,C.cloth);
  if(kind==='rocketCart'){for(let i=0;i<7;i++){const rack=joint(chassis,'rocket',-.5+i*.17,1.2,0);rack.rotation.x=.7;beam(rack,[0,-.45,0],[0,.9,0],.05,C.dark);mesh(new T.ConeGeometry(.055,.16,8),mat(C.gold),rack,0,.99,0);}addShot(g,'rocket',3,.8,[0,1.8,.4]);}
  else if(kind==='siegeTower'){for(const x of [-.65,.65])for(const z of [-1,1])box(chassis,.13,4,.13,x,2.6,z,C.wood);for(const y of [1.8,3,4.5])box(chassis,1.5,.13,2.5,0,y,0,C.wood);roof(chassis,1.9,2.7,4.6);}
- else if(kind==='ramWagon'){roof(chassis,1.8,3,1.7);const ram=cyl(chassis,.18,.20,3.4,0,1.1,0,C.wood,14);ram.rotation.x=Math.PI/2;ball(chassis,0,1.1,1.8,.22,.22,.23,C.dark,1);}
+ else if(kind==='ramWagon'){roof(chassis,1.8,3,1.7);const assembly=joint(chassis,'ramBeam');const ram=cyl(assembly,.18,.20,3.4,0,1.1,0,C.wood,14);ram.rotation.x=Math.PI/2;ball(assembly,0,1.1,1.8,.22,.22,.23,C.dark,1);}
  else if(kind==='mobileFieldwork'){for(let i=0;i<8;i++)beam(chassis,[-.7+i*.2,.6,1],[-.7+i*.2,1.7,1.5],.045,C.wood,.003);}
  else{for(let i=0;i<4;i++)crate(chassis,(i%2-.5)*.65,.75,-.7+Math.floor(i/2)*.85);if(kind==='builderWagon'){beam(chassis,[-.6,1,.9],[-.6,2.7,-.6],.06,C.wood);beam(chassis,[.6,1,.9],[.6,2.7,-.6],.06,C.wood);for(let i=0;i<6;i++)beam(chassis,[-.6,1+i*.28,.9-i*.25],[.6,1+i*.28,.9-i*.25],.035,C.wood);}}
  banner(chassis,.7,2.3,-1);return finishRig(g);

@@ -28,7 +28,7 @@
     },
     {
       "path": "packages/asset-tools/src/architecture.ts",
-      "sha256": "f8ac5ddbf385f308c041070d5cabe0d250fd402cb763b88d0e29ca91d070ddf2"
+      "sha256": "a57b175201ef7d0975155ef4fa038d07cd2213cf9b5d17adb72022f392216da8"
     },
     {
       "path": "packages/asset-tools/src/catalog.ts",
@@ -36,11 +36,15 @@
     },
     {
       "path": "packages/asset-tools/src/combat.ts",
-      "sha256": "aa32fb22e3b77a77a24100cd893fb39bc3239984fefe031b0a29684f1cf887b0"
+      "sha256": "4e8052e4dc2ba3574801e809855da22a0b3cd7e84253a4648ce817854cb389ad"
     },
     {
       "path": "packages/asset-tools/src/extended.ts",
       "sha256": "47999685db422355f08eb7ce9979a82cf92622fc742ff7ed0a53ac3a4ecdf379"
+    },
+    {
+      "path": "packages/asset-tools/src/footprints.ts",
+      "sha256": "b7eff0fe4f7016cd1a5e52adfc7c0a253a0e81042e7c9c644f83c08e8fc5655d"
     },
     {
       "path": "packages/asset-tools/src/geometry.ts",

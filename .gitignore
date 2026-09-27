@@ -12,4 +12,10 @@ apps/web/dist/
 test-results/
 playwright-report/
 coverage/
+.env.local
+.env.*.local
+*.sqlite
+*.sqlite-journal
+ai-evaluation/
+traces/
 PROJECT_STATE.md

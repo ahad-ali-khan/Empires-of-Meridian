@@ -7,11 +7,12 @@ import type {Clip} from '../../../packages/asset-tools/src/actors';
 import {clipsFor,conditionsFor,buildingKinds,eras,type Condition} from '../../../packages/asset-tools/src/extended';
 import {agesFor,defaultAge,unlockAge,militiaUpgrade} from '../../../packages/asset-tools/src/ages';
 import {roles,ageDescription} from '../../../packages/asset-tools/src/catalog';
+import {GameApp} from './game/GameApp';
 import './style.css';
 
 const assets=Object.keys(assetInfo) as AssetKind[];
 
-function App(){
+function ForgeApp(){
   const host=useRef<HTMLDivElement>(null), engine=useRef<Showcase|null>(null);
   const [view,setViewState]=useState<View>('settlement'),[asset,setAssetState]=useState<AssetKind>('hall');
   const [light,setLightState]=useState<Light>('day'),[metrics,setMetrics]=useState<Metrics|null>(null);
@@ -78,4 +79,4 @@ function App(){
     {!ready&&<div className="loader"><img src="/crest.svg"/><span>BUILDING THE COAST</span><div><i/></div></div>}
   </main>
 }
-createRoot(document.getElementById('root')!).render(<App/>);
+createRoot(document.getElementById('root')!).render(location.pathname.startsWith('/dev/forge')?<ForgeApp/>:<GameApp/>);

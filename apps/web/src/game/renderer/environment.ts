@@ -8,9 +8,9 @@ float fbm(vec2 p){float n=0.,a=.5;for(int i=0;i<5;i++){n+=noise(p)*a;p=mat2(1.6,
 `;
 export function createEnvironment(){
   const group=new T.Group();
-  const time={value:0},cloud={value:.20},storm={value:0},golden={value:0},wind={value:1},sunDirection={value:new T.Vector3(-32,62,28).normalize()};
+  const time={value:0},cloud={value:.20},storm={value:0},flash={value:0},golden={value:0},wind={value:1},sunDirection={value:new T.Vector3(-32,62,28).normalize()};
   const skyMat=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{time,cloud,storm,golden,sunDirection},vertexShader:`varying vec3 world;void main(){world=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(world,1.);}`,fragmentShader:`
-  varying vec3 world;uniform float time,cloud,storm,golden;uniform vec3 sunDirection;
+  varying vec3 world;uniform float time,cloud,storm,flash,golden;uniform vec3 sunDirection;
   ${noiseGLSL}
   void main(){vec3 d=normalize(world-cameraPosition);float elevation=max(d.y,0.);
     vec3 horizon=mix(vec3(.38,.60,.74),vec3(.88,.69,.43),golden*.65);
@@ -25,7 +25,8 @@ export function createEnvironment(){
     vec3 cloudColor=mix(vec3(.99,.99,.94),vec3(.30,.37,.42),storm*.7);
     cloudColor*=.82+detail*.34;
     col=mix(col,cloudColor,coverage*(.83+cloud*.17));
-    col=mix(col,col*vec3(.49,.57,.66),storm*.43);
+    col=mix(col,col*vec3(.23,.30,.38),storm*.78);
+    col+=vec3(.42,.55,.78)*flash;
     gl_FragColor=vec4(col,1.);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -72,7 +73,8 @@ export function createEnvironment(){
   const lightning=new T.Group();group.add(lightning);
   const boltMaterial=new T.MeshBasicMaterial({color:'#d5e8ff',toneMapped:false,transparent:true,opacity:0});
   for(let branch=0;branch<3;branch++){const points:T.Vector3[]=[];for(let i=0;i<9;i++)points.push(new T.Vector3(-32+i*2+(rand()-.5)*3+branch*6,52-i*4,-64+(rand()-.5)*3));const bolt=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),16,branch===0?0.12:0.06,4,false),boltMaterial);bolt.frustumCulled=false;lightning.add(bolt);}
+  const lightningLight=new T.PointLight('#b9d8ff',0,120,2);lightningLight.position.set(0,42,0);group.add(lightningLight);
   function setWeather(weather:Weather){activeWeather=weather;cloud.value=weather==='clear'?.2:weather==='overcast'?.8:1;storm.value=weather==='storm'?1:weather==='rain'?.4:0;wind.value=weather==='storm'?2.5:weather==='rain'?1.5:1;rain.visible=weather==='rain';rainMat.uniforms.density.value=weather==='rain'?.48:0;lightning.visible=weather==='storm';}
-  function update(t:number,camera:T.Camera){time.value=t;rainMat.uniforms.anchor.value.copy(camera.position);const phase=t%9;boltMaterial.opacity=activeWeather==='storm'?(phase<0.13?0.9:phase>0.24&&phase<0.37?0.7:0):0;}
+  function update(t:number,camera:T.Camera){time.value=t;rainMat.uniforms.anchor.value.copy(camera.position);const phase=t%7.2;const strike=phase<.16?1:phase>.29&&phase<.39?.65:0;boltMaterial.opacity=activeWeather==='storm'?strike:0;flash.value=activeWeather==='storm'?strike*.72:0;lightningLight.intensity=activeWeather==='storm'?strike*16:0;lightning.position.set(camera.position.x,camera.position.y*.12,camera.position.z-18);lightningLight.position.set(camera.position.x,camera.position.y+38,camera.position.z-10);}
   return {group,waterMat,sky,water,rain,setWeather,update,golden,sunDirection,wind};
 }

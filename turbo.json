@@ -1,0 +1,1 @@
+{"$schema":"https://turbo.build/schema.json","tasks":{"build":{"outputs":["apps/web/dist/**"]},"typecheck":{"outputs":[]},"test":{"outputs":["test-results/**"]},"lint":{"outputs":[]}}}

@@ -1,9 +1,10 @@
 import * as T from 'three';
 import {C,box,cyl,beam,mesh,mat,joint,finishRig,ball} from './geometry';
+import {buildingFootprint} from './footprints';
 
 const production=new Set(['barracks','archery','stable','workshop','factory','mercenaryHall']);
 export function architecture(kind:string,age:number){
- const root=new T.Group();root.name=kind;root.userData.age=age;root.userData.building=true;
+ const root=new T.Group();root.name=kind;root.userData.age=age;root.userData.building=true;root.userData.footprint=buildingFootprint(kind);
  const proportions:Record<string,[number,number,number]>={house:[.82,.88,.82],hall:[1.10,1.18,1.10],tower:[.82,1.38,.82],fort:[1.50,age===3?1.55:1.10,1.50],silo:[.86,1.05,.86],market:[1.05,.85,1.05],barracks:[1.05,.9,1.05]};
  if(proportions[kind])root.scale.set(...proportions[kind]);
  const wall=age===1?'#9a8058':age===2?'#c5ac82':age===3?'#cec0a0':age===4?'#a6795b':'#b7c3bd',roofColor=age===1?'#ae975d':age===2?'#9c6449':C.roof;
