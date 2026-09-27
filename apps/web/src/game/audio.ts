@@ -69,6 +69,22 @@ let context: AudioContext | undefined;
 let master: GainNode | undefined;
 let lastPlayed = new Map<AudioEventId, number>();
 let lastVoice = new Map<VoiceAssetId, number>();
+const effectFiles: Partial<Record<AudioEventId, string>> = {
+  'ui.command.accepted': 'ui-command-accepted',
+  'ui.command.rejected': 'ui-command-rejected',
+  'ui.selection': 'selection',
+  'resource.gather': 'resource-gather',
+  'construction.hammer': 'hammer',
+  'construction.complete': 'construction-complete',
+  'production.complete': 'production-complete',
+  'combat.projectile.launch': 'projectile-launch',
+  'combat.projectile.impact': 'projectile-impact',
+  'combat.destroyed': 'destroyed',
+  'weather.thunder': 'thunder',
+  'match.victory': 'victory',
+};
+const effectBuffers = new Map<AudioEventId, AudioBuffer>();
+const effectLoading = new Set<AudioEventId>();
 
 function getContext() {
   if (typeof window === 'undefined') return undefined;
@@ -83,6 +99,21 @@ function getContext() {
   return context;
 }
 
+async function loadEffect(id: AudioEventId, ctx: AudioContext) {
+  const file = effectFiles[id];
+  if (!file || effectLoading.has(id) || effectBuffers.has(id)) return;
+  effectLoading.add(id);
+  try {
+    const response = await fetch(`/audio/sfx/${file}.wav`);
+    if (!response.ok) return;
+    effectBuffers.set(id, await ctx.decodeAudioData(await response.arrayBuffer()));
+  } catch {
+    // Procedural oscillator fallback remains available when an asset is unavailable.
+  } finally {
+    effectLoading.delete(id);
+  }
+}
+
 export function playAudio(id: AudioEventId, intensity = 1) {
   const now = performance.now();
   const last = lastPlayed.get(id) ?? -Infinity;
@@ -91,6 +122,17 @@ export function playAudio(id: AudioEventId, intensity = 1) {
   lastPlayed.set(id, now);
   const ctx = getContext();
   if (!ctx || !master) return;
+  const buffer = effectBuffers.get(id);
+  if (buffer) {
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    gain.gain.value = Math.min(1.25, Math.max(0.55, intensity));
+    source.connect(gain).connect(master);
+    source.start();
+    return;
+  }
+  void loadEffect(id, ctx);
   const start = ctx.currentTime;
   let offset = 0;
   for (const tone of tones[id]) {
