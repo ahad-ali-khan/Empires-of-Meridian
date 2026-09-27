@@ -5,7 +5,7 @@ import {coastAt, landAt, seedHash, inlandWater, terrainHeight} from './terrain';
 import {findPath, blocked, approachRange, invalidateNavigation, nearestPassable} from './navigation';
 import {wallSpans, inWall, wallPlacementReason} from './walls';
 import {edgeDistance, halfBounds, perimeterPoint} from './spatial';
-import {chooseIntent, DEFAULT_AI_POLICY, featuresFor} from './ai-policy';
+import {chooseIntent, DEFAULT_AI_POLICY, featuresFor, teacherIntent} from './ai-policy';
 import {
   PROTOCOL_VERSION,
   RESOURCE_SCALE,
@@ -1591,13 +1591,17 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
     const w = state.map.size,
       route = [
         [0.5, 0.5],
-        [0.7, 0.72],
-        [0.25, 0.75],
-        [0.72, 0.23],
+        [0.72, 0.72],
+        [0.24, 0.76],
+        [0.76, 0.24],
         [0.22, 0.5],
-        [0.5, 0.8],
+        [0.5, 0.82],
+        [0.82, 0.5],
+        [0.18, 0.18],
       ],
-      point = route[Math.floor(state.tick / 1800) % route.length];
+      // A scout should finish a leg before being given the next one. Reissuing
+      // the same order every AI interval used to reset its path near waypoints.
+      point = route[Math.floor(state.tick / 1200) % route.length];
     issued.push({
       ...base,
       sequence: next(),
@@ -1666,8 +1670,19 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
       });
   }
   if (p.tokens > 0) issued.push({...base, sequence: next(), type: 'dispatch', dispatchId: 'charter-1'});
-  const threshold = difficulty === 'relaxed' ? 10 : difficulty === 'standard' ? 7 : 5;
-  const policyIntent = chooseIntent(DEFAULT_AI_POLICY, featuresFor(state, owner));
+  // A small starting force should begin scouting before the economy has
+  // snowballed. Difficulty changes patience, never combat stats or costs.
+  const threshold = difficulty === 'relaxed' ? 8 : difficulty === 'standard' ? 5 : 4;
+  const aiFeatures = featuresFor(state, owner);
+  const learnedIntent = chooseIntent(DEFAULT_AI_POLICY, aiFeatures);
+  // The policy is still recorded and used for non-trivial states, but a
+  // defensive tie in the small offline model must not stall a healthy army.
+  // With no nearby threat and no known enemy, the legal action is development
+  // and scouting; once the scout reveals a target, the policy can engage.
+  const policyIntent =
+    learnedIntent === 'defend' && aiFeatures.enemyNearBase === 0 && aiFeatures.knownEnemies === 0
+      ? teacherIntent(aiFeatures)
+      : learnedIntent;
   let goal: string = policyIntent;
   const enemyDefenses = seen.filter(
     (e) => e.category === 'building' && ['tower', 'fort', 'wall', 'gate'].includes(e.kind),
@@ -1712,9 +1727,27 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
       history.push(target.id);
       if (history.length > 6) history.shift();
     } else {
-      // Keep the main force near its current position until scouting finds a real target.
-      // The explorer already follows the route above; moving the whole army here caused waypoint oscillation.
+      // If the explorer is dead or still crossing a large map, send a healthy
+      // detachment to the next legal search waypoint. This creates pressure
+      // without granting the AI knowledge of hidden entities.
       goal = 'scout';
+      if (army.length >= threshold && state.tick % 600 === 0) {
+        const w = state.map.size,
+          search = [
+            [0.5, 0.5],
+            [0.24, 0.76],
+            [0.76, 0.24],
+            [0.82, 0.5],
+          ][(Math.floor(state.tick / 600) + owner) % 4];
+        issued.push({
+          ...base,
+          sequence: next(),
+          type: 'move',
+          entityIds: army.filter((e) => e.task === 'idle').map((e) => e.id),
+          x: Math.trunc(search[0] * w),
+          z: Math.trunc(search[1] * w),
+        });
+      }
     }
   }
   if (hall && difficulty !== 'relaxed' && policyIntent === 'regroup') {

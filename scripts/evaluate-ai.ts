@@ -1,7 +1,9 @@
 import {checksum, createMatch, step} from '../packages/sim/src/index';
 import {chooseIntent, featuresFor, DEFAULT_AI_POLICY} from '../packages/sim/src/ai-policy';
 
-const seeds = Array.from({length: 12}, (_, i) => 7000 + i);
+const matchCount = Math.max(1, Number(process.env.AI_EVAL_MATCHES ?? 12));
+const tickBudget = Math.max(1, Number(process.env.AI_EVAL_TICKS ?? 2400));
+const seeds = Array.from({length: matchCount}, (_, i) => 7000 + i);
 const reports = seeds.map((seed) => {
   const state = createMatch({
     v: 1,
@@ -14,7 +16,7 @@ const reports = seeds.map((seed) => {
     fogOfWar: true,
     aiCount: 1,
   });
-  for (let tick = 0; tick < 2400 && !state.winner; tick++) step(state, []);
+  for (let tick = 0; tick < tickBudget && !state.winner; tick++) step(state, []);
   const traces = state.aiTrace.filter((trace) => trace.playerId === 2);
   const goals = [...new Set(traces.map((trace) => trace.goal))];
   const routes = new Set(traces.map((trace) => trace.routeIndex)).size;
@@ -39,6 +41,7 @@ console.log(
   JSON.stringify(
     {
       matches: reports.length,
+      tickBudget,
       completed,
       goalVariety,
       averageResources: Math.round(reports.reduce((sum, report) => sum + report.resources, 0) / reports.length),
