@@ -40,6 +40,27 @@ describe('deterministic simulation', () => {
       restored = restoreSave(save);
     expect(checksum(restored)).toBe(checksum(state));
   });
+  test('AI-only replay remains checksum-stable over an accelerated match', () => {
+    const config = {
+      v: 1 as const,
+      seed: 90210,
+      difficulty: 'standard' as const,
+      mode: 'skirmish' as const,
+      populationCap: 120,
+      gameSpeed: 1,
+      mapSize: 'small' as const,
+      fogOfWar: true,
+      aiCount: 1 as const,
+    };
+    const a = createMatch(config),
+      b = createMatch(config);
+    for (let i = 0; i < 2400; i++) {
+      step(a, []);
+      step(b, []);
+    }
+    expect(checksum(a)).toBe(checksum(b));
+    expect(a.commandLog.some((command) => command.playerId === 2)).toBe(true);
+  });
   test('100 map seeds keep starts and resources legal', () => {
     for (let seed = 1; seed <= 100; seed++) {
       const state = createMatch({
