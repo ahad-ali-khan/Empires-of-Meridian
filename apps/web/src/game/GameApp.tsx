@@ -206,7 +206,8 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     sequence = useRef(1),
     groups = useRef(new Map<string, number[]>()),
     selectedRef = useRef(new Set<number>()),
-    buildMode = useRef<string | undefined>(undefined);
+    buildMode = useRef<string | undefined>(undefined),
+    winnerAnnounced = useRef(false);
   const [snapshot, setSnapshot] = useState<MatchSnapshot | undefined>(undefined),
     [selected, setSelected] = useState(new Set<number>()),
     [paused, setPaused] = useState(false),
@@ -470,6 +471,14 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
   snapshotRef.current = snapshot;
   const sendRef = useRef(send);
   sendRef.current = send;
+  useEffect(() => {
+    if (!snapshot?.winner || winnerAnnounced.current) return;
+    winnerAnnounced.current = true;
+    if (snapshot.winner === 1) {
+      playAudio('match.victory', 1.15);
+      playVoice('victory', 0.72);
+    } else playVoice('defeat', 0.72);
+  }, [snapshot?.winner]);
   useEffect(() => engine.current?.setSelected(selected), [selected]);
   useEffect(() => {
     const keys = (e: KeyboardEvent) => {
