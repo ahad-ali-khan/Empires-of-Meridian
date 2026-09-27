@@ -8,6 +8,8 @@ Implemented: a local Three.js settlement and Asset Forge with original procedura
 
 Current verification slice: `pnpm typecheck`, `pnpm test:unit`, `pnpm test`, and `pnpm ai:evaluate:local`. The offline AI now records target, route, and resource-focus telemetry; the local evaluator runs 40 deterministic small-map matches for 3,600 ticks by default and reports strategy/route/target variety. A 100-seed early-match stress run completed with 100 unique checksums and no crashes at 2,400 ticks; full-length conquest balance is still open. Multiplayer remains a foundation fixture, not a release-ready authoritative service.
 
+The repeatable headless profile (`pnpm tsx scripts/profile-sim.ts`) currently measures about 1.37 ms per simulation tick and 0.63 ms per live snapshot at 825 entities on this host. This is a CPU simulation sample, not a sustained GPU or M1 Air frame-rate claim; the renderer performance gate remains open.
+
 - [ ] Milestone 0: foundation, deterministic fixtures, services, CI
 - [ ] Milestone 1: offline vertical slice
 - [ ] Milestone 2: multiplayer proof
