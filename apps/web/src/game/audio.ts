@@ -69,22 +69,32 @@ let context: AudioContext | undefined;
 let master: GainNode | undefined;
 let lastPlayed = new Map<AudioEventId, number>();
 const lastVoice = new Map<VoiceAssetId, number>();
-const effectFiles: Partial<Record<AudioEventId, string>> = {
-  'ui.command.accepted': 'ui-command-accepted',
-  'ui.command.rejected': 'ui-command-rejected',
-  'ui.selection': 'selection',
-  'resource.gather': 'resource-gather',
-  'construction.hammer': 'hammer',
-  'construction.complete': 'construction-complete',
-  'production.complete': 'production-complete',
-  'combat.projectile.launch': 'projectile-launch',
-  'combat.projectile.impact': 'projectile-impact',
-  'combat.destroyed': 'destroyed',
-  'weather.thunder': 'thunder',
-  'match.victory': 'victory',
+const voiceCursors = new Map<VoiceAssetId, string>();
+const effectCursors = new Map<AudioEventId, string>();
+const effectFiles: Partial<Record<AudioEventId, string[]>> = {
+  'ui.command.accepted': ['ui-command-accepted', 'ui-command-accepted_v2', 'ui-command-accepted_v3'],
+  'ui.command.rejected': ['ui-command-rejected', 'ui-command-rejected_v2', 'ui-command-rejected_v3'],
+  'ui.selection': ['selection', 'selection_v2', 'selection_v3'],
+  'resource.gather': ['resource-gather', 'resource-gather_v2', 'resource-gather_v3'],
+  'construction.hammer': ['hammer', 'hammer_v2', 'hammer_v3'],
+  'construction.complete': ['construction-complete', 'construction-complete_v2', 'construction-complete_v3'],
+  'production.complete': ['production-complete', 'production-complete_v2', 'production-complete_v3'],
+  'combat.projectile.launch': ['projectile-launch', 'projectile-launch_v2', 'projectile-launch_v3'],
+  'combat.projectile.impact': ['projectile-impact', 'projectile-impact_v2', 'projectile-impact_v3'],
+  'combat.destroyed': ['destroyed', 'destroyed_v2', 'destroyed_v3'],
+  'weather.thunder': ['thunder', 'thunder_v2', 'thunder_v3'],
+  'match.victory': ['victory', 'victory_v2', 'victory_v3'],
 };
-const effectBuffers = new Map<AudioEventId, AudioBuffer>();
+const effectBuffers = new Map<AudioEventId, AudioBuffer[]>();
 const effectLoading = new Set<AudioEventId>();
+
+function chooseVariant(id: string, variants: string[]) {
+  if (variants.length <= 1) return variants[0];
+  const previous = id && (voiceCursors.get(id) ?? effectCursors.get(id as AudioEventId));
+  const candidates = variants.filter((variant) => variant !== previous);
+  const next = candidates[Math.floor(Math.random() * candidates.length)] ?? variants[0];
+  return next;
+}
 
 function getContext() {
   if (typeof window === 'undefined') return undefined;
@@ -100,13 +110,19 @@ function getContext() {
 }
 
 async function loadEffect(id: AudioEventId, ctx: AudioContext) {
-  const file = effectFiles[id];
-  if (!file || effectLoading.has(id) || effectBuffers.has(id)) return;
+  const files = effectFiles[id];
+  if (!files || effectLoading.has(id) || effectBuffers.has(id)) return;
   effectLoading.add(id);
   try {
-    const response = await fetch(`/audio/sfx/${file}.wav`);
-    if (!response.ok) return;
-    effectBuffers.set(id, await ctx.decodeAudioData(await response.arrayBuffer()));
+    const decoded = await Promise.all(
+      files.map(async (file) => {
+        const response = await fetch(`/audio/sfx/${file}.wav`);
+        if (!response.ok) return undefined;
+        return ctx.decodeAudioData(await response.arrayBuffer());
+      }),
+    );
+    const buffers = decoded.filter((buffer): buffer is AudioBuffer => Boolean(buffer));
+    if (buffers.length) effectBuffers.set(id, buffers);
   } catch {
     // Procedural oscillator fallback remains available when an asset is unavailable.
   } finally {
@@ -122,11 +138,16 @@ export function playAudio(id: AudioEventId, intensity = 1) {
   lastPlayed.set(id, now);
   const ctx = getContext();
   if (!ctx || !master) return;
-  const buffer = effectBuffers.get(id);
+  const buffers = effectBuffers.get(id);
+  const buffer = buffers?.[0];
   if (buffer) {
+    const fileNames = effectFiles[id] ?? [];
+    const selected = chooseVariant(id, fileNames);
+    const selectedIndex = Math.max(0, fileNames.indexOf(selected));
+    effectCursors.set(id, selected);
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
-    source.buffer = buffer;
+    source.buffer = buffers[selectedIndex % buffers.length] ?? buffer;
     gain.gain.value = Math.min(1.25, Math.max(0.55, intensity));
     source.connect(gain).connect(master);
     source.start();
@@ -170,6 +191,9 @@ export function audioForSimulationEvent(kind: string, text: string) {
 
 export function resetAudioThrottle() {
   lastPlayed = new Map();
+  lastVoice.clear();
+  voiceCursors.clear();
+  effectCursors.clear();
 }
 
 export function voiceForSimulationEvent(kind: string, text: string) {
@@ -186,7 +210,9 @@ export function playVoice(id: VoiceAssetId, volume = 0.7) {
   const now = performance.now();
   if (now - (lastVoice.get(id) ?? -Infinity) < 900) return;
   lastVoice.set(id, now);
-  const audio = new Audio(`/audio/voices/${id}.wav`);
+  const selected = chooseVariant(id, [id, `${id}_v2`, `${id}_v3`]);
+  voiceCursors.set(id, selected);
+  const audio = new Audio(`/audio/voices/${selected}.wav`);
   audio.volume = Math.max(0, Math.min(1, volume));
   void audio.play().catch(() => undefined);
 }

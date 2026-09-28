@@ -1,0 +1,772 @@
+[
+  {
+    "id": "commander_ready_v2",
+    "text": "Our settlement stands ready.",
+    "voice": "Kore",
+    "style": "calm, confident, warm strategy-game commander; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_ready_v2.wav"
+  },
+  {
+    "id": "commander_ready_v3",
+    "text": "Our settlement stands ready.",
+    "voice": "Kore",
+    "style": "calm, confident, warm strategy-game commander; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_ready_v3.wav"
+  },
+  {
+    "id": "commander_move_v2",
+    "text": "Move out.",
+    "voice": "Kore",
+    "style": "brief, decisive field commander order; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_move_v2.wav"
+  },
+  {
+    "id": "commander_move_v3",
+    "text": "Move out.",
+    "voice": "Kore",
+    "style": "brief, decisive field commander order; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_move_v3.wav"
+  },
+  {
+    "id": "commander_attack_v2",
+    "text": "Engage the enemy.",
+    "voice": "Kore",
+    "style": "controlled, determined battlefield command; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_attack_v2.wav"
+  },
+  {
+    "id": "commander_attack_v3",
+    "text": "Engage the enemy.",
+    "voice": "Kore",
+    "style": "controlled, determined battlefield command; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_attack_v3.wav"
+  },
+  {
+    "id": "commander_build_v2",
+    "text": "Begin construction.",
+    "voice": "Kore",
+    "style": "clear, assured strategic command; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_build_v2.wav"
+  },
+  {
+    "id": "commander_build_v3",
+    "text": "Begin construction.",
+    "voice": "Kore",
+    "style": "clear, assured strategic command; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_build_v3.wav"
+  },
+  {
+    "id": "commander_research_v2",
+    "text": "Knowledge will carry us into a new age.",
+    "voice": "Kore",
+    "style": "ceremonial, hopeful, inspiring commander narration; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_research_v2.wav"
+  },
+  {
+    "id": "commander_research_v3",
+    "text": "Knowledge will carry us into a new age.",
+    "voice": "Kore",
+    "style": "ceremonial, hopeful, inspiring commander narration; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_research_v3.wav"
+  },
+  {
+    "id": "commander_dispatch_v2",
+    "text": "The Dispatch is on its way.",
+    "voice": "Kore",
+    "style": "confident, anticipatory strategy-game announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_dispatch_v2.wav"
+  },
+  {
+    "id": "commander_dispatch_v3",
+    "text": "The Dispatch is on its way.",
+    "voice": "Kore",
+    "style": "confident, anticipatory strategy-game announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_dispatch_v3.wav"
+  },
+  {
+    "id": "commander_victory_v2",
+    "text": "The coast belongs to the Aurelian League.",
+    "voice": "Kore",
+    "style": "proud, warm, restrained victory announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_victory_v2.wav"
+  },
+  {
+    "id": "commander_victory_v3",
+    "text": "The coast belongs to the Aurelian League.",
+    "voice": "Kore",
+    "style": "proud, warm, restrained victory announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_victory_v3.wav"
+  },
+  {
+    "id": "commander_defeat_v2",
+    "text": "Our command has fallen. We will learn and return.",
+    "voice": "Kore",
+    "style": "solemn, dignified defeat announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/commander_defeat_v2.wav"
+  },
+  {
+    "id": "commander_defeat_v3",
+    "text": "Our command has fallen. We will learn and return.",
+    "voice": "Kore",
+    "style": "solemn, dignified defeat announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/commander_defeat_v3.wav"
+  },
+  {
+    "id": "worker_gather_v2",
+    "text": "At once. We will gather what the settlement needs.",
+    "voice": "Puck",
+    "style": "brief, practical, energetic worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_gather_v2.wav"
+  },
+  {
+    "id": "worker_gather_v3",
+    "text": "At once. We will gather what the settlement needs.",
+    "voice": "Puck",
+    "style": "brief, practical, energetic worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_gather_v3.wav"
+  },
+  {
+    "id": "worker_move_v2",
+    "text": "On my way.",
+    "voice": "Puck",
+    "style": "short, friendly, practical worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_move_v2.wav"
+  },
+  {
+    "id": "worker_move_v3",
+    "text": "On my way.",
+    "voice": "Puck",
+    "style": "short, friendly, practical worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_move_v3.wav"
+  },
+  {
+    "id": "worker_build_v2",
+    "text": "We will make it stand.",
+    "voice": "Puck",
+    "style": "focused, capable builder acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_build_v2.wav"
+  },
+  {
+    "id": "worker_build_v3",
+    "text": "We will make it stand.",
+    "voice": "Puck",
+    "style": "focused, capable builder acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_build_v3.wav"
+  },
+  {
+    "id": "worker_repair_v2",
+    "text": "I will restore it.",
+    "voice": "Puck",
+    "style": "focused, reassuring repair worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_repair_v2.wav"
+  },
+  {
+    "id": "worker_repair_v3",
+    "text": "I will restore it.",
+    "voice": "Puck",
+    "style": "focused, reassuring repair worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_repair_v3.wav"
+  },
+  {
+    "id": "worker_mine_v2",
+    "text": "The vein is here.",
+    "voice": "Puck",
+    "style": "brief, practical mining worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_mine_v2.wav"
+  },
+  {
+    "id": "worker_mine_v3",
+    "text": "The vein is here.",
+    "voice": "Puck",
+    "style": "brief, practical mining worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_mine_v3.wav"
+  },
+  {
+    "id": "worker_chop_v2",
+    "text": "Timber coming in.",
+    "voice": "Puck",
+    "style": "brief, energetic lumber worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_chop_v2.wav"
+  },
+  {
+    "id": "worker_chop_v3",
+    "text": "Timber coming in.",
+    "voice": "Puck",
+    "style": "brief, energetic lumber worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_chop_v3.wav"
+  },
+  {
+    "id": "worker_farm_v2",
+    "text": "The fields will feed us.",
+    "voice": "Puck",
+    "style": "warm, practical farming worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_farm_v2.wav"
+  },
+  {
+    "id": "worker_farm_v3",
+    "text": "The fields will feed us.",
+    "voice": "Puck",
+    "style": "warm, practical farming worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_farm_v3.wav"
+  },
+  {
+    "id": "worker_fish_v2",
+    "text": "The nets are ready.",
+    "voice": "Puck",
+    "style": "focused, upbeat fishing worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_fish_v2.wav"
+  },
+  {
+    "id": "worker_fish_v3",
+    "text": "The nets are ready.",
+    "voice": "Puck",
+    "style": "focused, upbeat fishing worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_fish_v3.wav"
+  },
+  {
+    "id": "worker_hunt_v2",
+    "text": "I will bring back food.",
+    "voice": "Puck",
+    "style": "quietly determined hunting worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_hunt_v2.wav"
+  },
+  {
+    "id": "worker_hunt_v3",
+    "text": "I will bring back food.",
+    "voice": "Puck",
+    "style": "quietly determined hunting worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_hunt_v3.wav"
+  },
+  {
+    "id": "worker_deposit_v2",
+    "text": "Back to the storehouse.",
+    "voice": "Puck",
+    "style": "short, practical worker acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_deposit_v2.wav"
+  },
+  {
+    "id": "worker_deposit_v3",
+    "text": "Back to the storehouse.",
+    "voice": "Puck",
+    "style": "short, practical worker acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_deposit_v3.wav"
+  },
+  {
+    "id": "worker_full_v2",
+    "text": "My load is full.",
+    "voice": "Puck",
+    "style": "clear, slightly urgent worker report; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_full_v2.wav"
+  },
+  {
+    "id": "worker_full_v3",
+    "text": "My load is full.",
+    "voice": "Puck",
+    "style": "clear, slightly urgent worker report; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_full_v3.wav"
+  },
+  {
+    "id": "worker_no_resource_v2",
+    "text": "There is nothing left nearby.",
+    "voice": "Puck",
+    "style": "clear, mildly disappointed worker report; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/worker_no_resource_v2.wav"
+  },
+  {
+    "id": "worker_no_resource_v3",
+    "text": "There is nothing left nearby.",
+    "voice": "Puck",
+    "style": "clear, mildly disappointed worker report; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/worker_no_resource_v3.wav"
+  },
+  {
+    "id": "soldier_move_v2",
+    "text": "Advancing.",
+    "voice": "Charon",
+    "style": "brief, disciplined infantry acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/soldier_move_v2.wav"
+  },
+  {
+    "id": "soldier_move_v3",
+    "text": "Advancing.",
+    "voice": "Charon",
+    "style": "brief, disciplined infantry acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/soldier_move_v3.wav"
+  },
+  {
+    "id": "soldier_attack_v2",
+    "text": "For the League.",
+    "voice": "Charon",
+    "style": "forceful, disciplined battlefield attack bark; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/soldier_attack_v2.wav"
+  },
+  {
+    "id": "soldier_attack_v3",
+    "text": "For the League.",
+    "voice": "Charon",
+    "style": "forceful, disciplined battlefield attack bark; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/soldier_attack_v3.wav"
+  },
+  {
+    "id": "soldier_hold_v2",
+    "text": "Holding position.",
+    "voice": "Charon",
+    "style": "firm, disciplined military acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/soldier_hold_v2.wav"
+  },
+  {
+    "id": "soldier_hold_v3",
+    "text": "Holding position.",
+    "voice": "Charon",
+    "style": "firm, disciplined military acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/soldier_hold_v3.wav"
+  },
+  {
+    "id": "soldier_retreat_v2",
+    "text": "Fall back.",
+    "voice": "Charon",
+    "style": "urgent but controlled military retreat bark; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/soldier_retreat_v2.wav"
+  },
+  {
+    "id": "soldier_retreat_v3",
+    "text": "Fall back.",
+    "voice": "Charon",
+    "style": "urgent but controlled military retreat bark; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/soldier_retreat_v3.wav"
+  },
+  {
+    "id": "soldier_target_lost_v2",
+    "text": "Target lost.",
+    "voice": "Charon",
+    "style": "concise military report; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/soldier_target_lost_v2.wav"
+  },
+  {
+    "id": "soldier_target_lost_v3",
+    "text": "Target lost.",
+    "voice": "Charon",
+    "style": "concise military report; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/soldier_target_lost_v3.wav"
+  },
+  {
+    "id": "soldier_out_of_range_v2",
+    "text": "Out of range.",
+    "voice": "Charon",
+    "style": "concise tactical report; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/soldier_out_of_range_v2.wav"
+  },
+  {
+    "id": "soldier_out_of_range_v3",
+    "text": "Out of range.",
+    "voice": "Charon",
+    "style": "concise tactical report; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/soldier_out_of_range_v3.wav"
+  },
+  {
+    "id": "cavalry_move_v2",
+    "text": "Riders moving.",
+    "voice": "Charon",
+    "style": "confident mounted-unit acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/cavalry_move_v2.wav"
+  },
+  {
+    "id": "cavalry_move_v3",
+    "text": "Riders moving.",
+    "voice": "Charon",
+    "style": "confident mounted-unit acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/cavalry_move_v3.wav"
+  },
+  {
+    "id": "cavalry_attack_v2",
+    "text": "Ride them down.",
+    "voice": "Charon",
+    "style": "forceful cavalry charge bark; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/cavalry_attack_v2.wav"
+  },
+  {
+    "id": "cavalry_attack_v3",
+    "text": "Ride them down.",
+    "voice": "Charon",
+    "style": "forceful cavalry charge bark; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/cavalry_attack_v3.wav"
+  },
+  {
+    "id": "artillery_ready_v2",
+    "text": "Gun ready.",
+    "voice": "Charon",
+    "style": "crisp artillery crew acknowledgement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/artillery_ready_v2.wav"
+  },
+  {
+    "id": "artillery_ready_v3",
+    "text": "Gun ready.",
+    "voice": "Charon",
+    "style": "crisp artillery crew acknowledgement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/artillery_ready_v3.wav"
+  },
+  {
+    "id": "artillery_fire_v2",
+    "text": "Fire.",
+    "voice": "Charon",
+    "style": "sharp, commanding artillery order; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/artillery_fire_v2.wav"
+  },
+  {
+    "id": "artillery_fire_v3",
+    "text": "Fire.",
+    "voice": "Charon",
+    "style": "sharp, commanding artillery order; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/artillery_fire_v3.wav"
+  },
+  {
+    "id": "artillery_reload_v2",
+    "text": "Reloading the field piece.",
+    "voice": "Charon",
+    "style": "focused artillery crew report; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/artillery_reload_v2.wav"
+  },
+  {
+    "id": "artillery_reload_v3",
+    "text": "Reloading the field piece.",
+    "voice": "Charon",
+    "style": "focused artillery crew report; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/artillery_reload_v3.wav"
+  },
+  {
+    "id": "enemy_sighted_v2",
+    "text": "Enemy forces sighted beyond the frontier.",
+    "voice": "Charon",
+    "style": "urgent but controlled military warning; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/enemy_sighted_v2.wav"
+  },
+  {
+    "id": "enemy_sighted_v3",
+    "text": "Enemy forces sighted beyond the frontier.",
+    "voice": "Charon",
+    "style": "urgent but controlled military warning; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/enemy_sighted_v3.wav"
+  },
+  {
+    "id": "alert_under_attack_v2",
+    "text": "We are under attack.",
+    "voice": "Kore",
+    "style": "urgent, clear settlement warning; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/alert_under_attack_v2.wav"
+  },
+  {
+    "id": "alert_under_attack_v3",
+    "text": "We are under attack.",
+    "voice": "Kore",
+    "style": "urgent, clear settlement warning; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/alert_under_attack_v3.wav"
+  },
+  {
+    "id": "alert_building_damage_v2",
+    "text": "A building is taking damage.",
+    "voice": "Kore",
+    "style": "urgent but composed strategic warning; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/alert_building_damage_v2.wav"
+  },
+  {
+    "id": "alert_building_damage_v3",
+    "text": "A building is taking damage.",
+    "voice": "Kore",
+    "style": "urgent but composed strategic warning; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/alert_building_damage_v3.wav"
+  },
+  {
+    "id": "alert_population_v2",
+    "text": "Our population limit has been reached.",
+    "voice": "Kore",
+    "style": "clear, helpful strategy-game alert; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/alert_population_v2.wav"
+  },
+  {
+    "id": "alert_population_v3",
+    "text": "Our population limit has been reached.",
+    "voice": "Kore",
+    "style": "clear, helpful strategy-game alert; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/alert_population_v3.wav"
+  },
+  {
+    "id": "age_stone_v2",
+    "text": "We begin in the Stone Age, where every foundation is hard won.",
+    "voice": "Kore",
+    "style": "ceremonial, grounded historical narration; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/age_stone_v2.wav"
+  },
+  {
+    "id": "age_stone_v3",
+    "text": "We begin in the Stone Age, where every foundation is hard won.",
+    "voice": "Kore",
+    "style": "ceremonial, grounded historical narration; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/age_stone_v3.wav"
+  },
+  {
+    "id": "age_classical_v2",
+    "text": "The Classical Age opens new roads, stronger walls, and wider ambition.",
+    "voice": "Kore",
+    "style": "ceremonial, confident age advancement narration; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/age_classical_v2.wav"
+  },
+  {
+    "id": "age_classical_v3",
+    "text": "The Classical Age opens new roads, stronger walls, and wider ambition.",
+    "voice": "Kore",
+    "style": "ceremonial, confident age advancement narration; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/age_classical_v3.wav"
+  },
+  {
+    "id": "age_medieval_v2",
+    "text": "The Medieval Age begins. Fortify the coast and command the frontier.",
+    "voice": "Kore",
+    "style": "ceremonial, proud strategic narration; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/age_medieval_v2.wav"
+  },
+  {
+    "id": "age_medieval_v3",
+    "text": "The Medieval Age begins. Fortify the coast and command the frontier.",
+    "voice": "Kore",
+    "style": "ceremonial, proud strategic narration; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/age_medieval_v3.wav"
+  },
+  {
+    "id": "age_industrial_v2",
+    "text": "Industry transforms the League. Power now moves through machines and steel.",
+    "voice": "Kore",
+    "style": "grand, forward-looking age advancement narration; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/age_industrial_v2.wav"
+  },
+  {
+    "id": "age_industrial_v3",
+    "text": "Industry transforms the League. Power now moves through machines and steel.",
+    "voice": "Kore",
+    "style": "grand, forward-looking age advancement narration; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/age_industrial_v3.wav"
+  },
+  {
+    "id": "research_complete_v2",
+    "text": "The research is complete.",
+    "voice": "Kore",
+    "style": "clear, satisfied strategic announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/research_complete_v2.wav"
+  },
+  {
+    "id": "research_complete_v3",
+    "text": "The research is complete.",
+    "voice": "Kore",
+    "style": "clear, satisfied strategic announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/research_complete_v3.wav"
+  },
+  {
+    "id": "building_complete_v2",
+    "text": "Construction complete.",
+    "voice": "Kore",
+    "style": "brief, warm completion announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/building_complete_v2.wav"
+  },
+  {
+    "id": "building_complete_v3",
+    "text": "Construction complete.",
+    "voice": "Kore",
+    "style": "brief, warm completion announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/building_complete_v3.wav"
+  },
+  {
+    "id": "dispatch_arrived_v2",
+    "text": "The Dispatch has arrived.",
+    "voice": "Kore",
+    "style": "welcoming, important strategic announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/dispatch_arrived_v2.wav"
+  },
+  {
+    "id": "dispatch_arrived_v3",
+    "text": "The Dispatch has arrived.",
+    "voice": "Kore",
+    "style": "welcoming, important strategic announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/dispatch_arrived_v3.wav"
+  },
+  {
+    "id": "tutorial_camera_v2",
+    "text": "Use the mouse to orbit, pan, and zoom across the coast.",
+    "voice": "Kore",
+    "style": "patient, friendly tutorial narrator; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_camera_v2.wav"
+  },
+  {
+    "id": "tutorial_camera_v3",
+    "text": "Use the mouse to orbit, pan, and zoom across the coast.",
+    "voice": "Kore",
+    "style": "patient, friendly tutorial narrator; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_camera_v3.wav"
+  },
+  {
+    "id": "tutorial_gather_v2",
+    "text": "Select a worker, then choose a nearby resource to begin gathering.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_gather_v2.wav"
+  },
+  {
+    "id": "tutorial_gather_v3",
+    "text": "Select a worker, then choose a nearby resource to begin gathering.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_gather_v3.wav"
+  },
+  {
+    "id": "tutorial_build_v2",
+    "text": "Place a building on clear ground, then keep workers nearby until construction is complete.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_build_v2.wav"
+  },
+  {
+    "id": "tutorial_build_v3",
+    "text": "Place a building on clear ground, then keep workers nearby until construction is complete.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_build_v3.wav"
+  },
+  {
+    "id": "tutorial_train_v2",
+    "text": "Select a production building to queue units and set their rally point.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_train_v2.wav"
+  },
+  {
+    "id": "tutorial_train_v3",
+    "text": "Select a production building to queue units and set their rally point.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_train_v3.wav"
+  },
+  {
+    "id": "tutorial_fight_v2",
+    "text": "Use formations, range, and counters to win battles without wasting your army.",
+    "voice": "Kore",
+    "style": "clear, encouraging tactical tutorial instruction; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_fight_v2.wav"
+  },
+  {
+    "id": "tutorial_fight_v3",
+    "text": "Use formations, range, and counters to win battles without wasting your army.",
+    "voice": "Kore",
+    "style": "clear, encouraging tactical tutorial instruction; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_fight_v3.wav"
+  },
+  {
+    "id": "tutorial_dispatch_v2",
+    "text": "Earn Renown, then call a Dispatch when its arrival site is safe.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_dispatch_v2.wav"
+  },
+  {
+    "id": "tutorial_dispatch_v3",
+    "text": "Earn Renown, then call a Dispatch when its arrival site is safe.",
+    "voice": "Kore",
+    "style": "patient, precise tutorial instruction; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_dispatch_v3.wav"
+  },
+  {
+    "id": "tutorial_fog_v2",
+    "text": "Explore carefully. The fog remembers places you have seen, but hides moving enemies.",
+    "voice": "Kore",
+    "style": "quiet, atmospheric tutorial instruction; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_fog_v2.wav"
+  },
+  {
+    "id": "tutorial_fog_v3",
+    "text": "Explore carefully. The fog remembers places you have seen, but hides moving enemies.",
+    "voice": "Kore",
+    "style": "quiet, atmospheric tutorial instruction; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_fog_v3.wav"
+  },
+  {
+    "id": "tutorial_complete_v2",
+    "text": "The fundamentals are yours. Build a living settlement and take the coast.",
+    "voice": "Kore",
+    "style": "warm, encouraging tutorial completion narration; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/tutorial_complete_v2.wav"
+  },
+  {
+    "id": "tutorial_complete_v3",
+    "text": "The fundamentals are yours. Build a living settlement and take the coast.",
+    "voice": "Kore",
+    "style": "warm, encouraging tutorial completion narration; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/tutorial_complete_v3.wav"
+  },
+  {
+    "id": "match_start_v2",
+    "text": "The match begins.",
+    "voice": "Kore",
+    "style": "brief, confident match-start announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/match_start_v2.wav"
+  },
+  {
+    "id": "match_start_v3",
+    "text": "The match begins.",
+    "voice": "Kore",
+    "style": "brief, confident match-start announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/match_start_v3.wav"
+  },
+  {
+    "id": "match_pause_v2",
+    "text": "The match is paused.",
+    "voice": "Kore",
+    "style": "calm interface announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/match_pause_v2.wav"
+  },
+  {
+    "id": "match_pause_v3",
+    "text": "The match is paused.",
+    "voice": "Kore",
+    "style": "calm interface announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/match_pause_v3.wav"
+  },
+  {
+    "id": "match_resume_v2",
+    "text": "Resuming command.",
+    "voice": "Kore",
+    "style": "calm, confident interface announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/match_resume_v2.wav"
+  },
+  {
+    "id": "match_resume_v3",
+    "text": "Resuming command.",
+    "voice": "Kore",
+    "style": "calm, confident interface announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/match_resume_v3.wav"
+  },
+  {
+    "id": "victory_v2",
+    "text": "Victory. The enemy command has been defeated.",
+    "voice": "Kore",
+    "style": "proud, restrained strategy-game victory announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/victory_v2.wav"
+  },
+  {
+    "id": "victory_v3",
+    "text": "Victory. The enemy command has been defeated.",
+    "voice": "Kore",
+    "style": "proud, restrained strategy-game victory announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/victory_v3.wav"
+  },
+  {
+    "id": "defeat_v2",
+    "text": "Defeat. The settlement has been lost.",
+    "voice": "Kore",
+    "style": "solemn, dignified strategy-game defeat announcement; alternate delivery with a slightly quicker cadence and a brighter final emphasis",
+    "out": "apps/web/public/audio/voices/defeat_v2.wav"
+  },
+  {
+    "id": "defeat_v3",
+    "text": "Defeat. The settlement has been lost.",
+    "voice": "Kore",
+    "style": "solemn, dignified strategy-game defeat announcement; alternate delivery with a lower, steadier cadence and a clear pause before the final phrase",
+    "out": "apps/web/public/audio/voices/defeat_v3.wav"
+  }
+]

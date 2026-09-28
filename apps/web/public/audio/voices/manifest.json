@@ -11,10 +11,38 @@
       "sha256": "48e904798ed069b775e69f706d9a5083657f66aa4578dd08716325a2fcc52c57"
     },
     {
+      "id": "age_classical_v2",
+      "file": "age_classical_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "219b64253de4d26ff66d6412395fe0329e3ad53e1d2c00e05fbaa06c90f8c8e1",
+      "variantOf": "age_classical"
+    },
+    {
+      "id": "age_classical_v3",
+      "file": "age_classical_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "ffc341a87db14fa12918af6e70f6a6265240826d38f576ba4b63592d9edec2fe",
+      "variantOf": "age_classical"
+    },
+    {
       "id": "age_industrial",
       "file": "age_industrial.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "11e95997a09c918be9da9221197e289e42a5c11b691b7045ac3cdc20c7ce2d0b"
+    },
+    {
+      "id": "age_industrial_v2",
+      "file": "age_industrial_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "2e38e43ec334b6b3426c0eb8ede091ea94a99f18a17868129507875778e29671",
+      "variantOf": "age_industrial"
+    },
+    {
+      "id": "age_industrial_v3",
+      "file": "age_industrial_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "4f7b58398ae7b4ac00cb879a79bdf0f7d3cc584c10f171d108adeb59d8e978b8",
+      "variantOf": "age_industrial"
     },
     {
       "id": "age_medieval",
@@ -23,10 +51,38 @@
       "sha256": "89819826316b051400c4a919c5176c95e2da049a9a7e31da9a8a3d0760da96cd"
     },
     {
+      "id": "age_medieval_v2",
+      "file": "age_medieval_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "5655ae92f9064f5ce19aa398d4627d2287e1d1c41d2b469ad49f0fb88c257ea7",
+      "variantOf": "age_medieval"
+    },
+    {
+      "id": "age_medieval_v3",
+      "file": "age_medieval_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "018acdea89e28df0e2f835408bac97f55525ff0fe02d3caecd73d7d6a5bf3d36",
+      "variantOf": "age_medieval"
+    },
+    {
       "id": "age_stone",
       "file": "age_stone.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "6ac7611e1ea548dda5186f60d1eca417099ce7f259150b9790a16bdf1208e02b"
+    },
+    {
+      "id": "age_stone_v2",
+      "file": "age_stone_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "5e721f5e16ade9a1d4186680b5b3b1464878f3c434ea844a75177e66161429c6",
+      "variantOf": "age_stone"
+    },
+    {
+      "id": "age_stone_v3",
+      "file": "age_stone_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "4612848c874eb76f0583fc071e2074d3b67be770c5615f6e4566bfa2247f167e",
+      "variantOf": "age_stone"
     },
     {
       "id": "alert_building_damage",
@@ -35,10 +91,38 @@
       "sha256": "11b7d554e6f28defe722fecb0effcc278857f8ad28332911bb4c059c4750636e"
     },
     {
+      "id": "alert_building_damage_v2",
+      "file": "alert_building_damage_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "976a32ce7f473ba71d896e4b3f8b30d48969993ea765d272e3e13803d8b7b18d",
+      "variantOf": "alert_building_damage"
+    },
+    {
+      "id": "alert_building_damage_v3",
+      "file": "alert_building_damage_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "8e664152e9b98774bb2f6aa7511b586936815c7c83a8e5832884c34f324ecaa5",
+      "variantOf": "alert_building_damage"
+    },
+    {
       "id": "alert_population",
       "file": "alert_population.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "68ab1a84f478481c8b75f43b106dc584854b5ca813350f788a0ff86998b70bdf"
+    },
+    {
+      "id": "alert_population_v2",
+      "file": "alert_population_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "ba12a95c611208c1e9fa8a4f7b08b081b91170a5441b67495494b9e7101757c8",
+      "variantOf": "alert_population"
+    },
+    {
+      "id": "alert_population_v3",
+      "file": "alert_population_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "c899be4fc2d52c1281d30ddf8418983e0d3e37cc37d2f845c80e4ffc8c2fbce5",
+      "variantOf": "alert_population"
     },
     {
       "id": "alert_under_attack",
@@ -47,10 +131,38 @@
       "sha256": "c5df16cda500411ba45766278738d67981236cbeca02c1a37e18efade8cdff1f"
     },
     {
+      "id": "alert_under_attack_v2",
+      "file": "alert_under_attack_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "4e2c424ead7d6951304b6b39fb95803918eca00e6aba25aaecb3905d0b9256dd",
+      "variantOf": "alert_under_attack"
+    },
+    {
+      "id": "alert_under_attack_v3",
+      "file": "alert_under_attack_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "c00c9b97fe2a7a92a56ac92d9bae70383860b551342cc94f2978c1ea818a5906",
+      "variantOf": "alert_under_attack"
+    },
+    {
       "id": "artillery_fire",
       "file": "artillery_fire.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "892d79cea0f8f76732c429e3e8b3d428eccd7c00be9bb45667d4e7bb40971409"
+    },
+    {
+      "id": "artillery_fire_v2",
+      "file": "artillery_fire_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "e6db03f7ce3da518d0b64e8d63e77d029c638ab48f52d020b2a8f0078a3f8237",
+      "variantOf": "artillery_fire"
+    },
+    {
+      "id": "artillery_fire_v3",
+      "file": "artillery_fire_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "22985afe28c8268b203c32b37ae24549bcbe6fbb7d632c48e88110ed19c74781",
+      "variantOf": "artillery_fire"
     },
     {
       "id": "artillery_ready",
@@ -59,10 +171,38 @@
       "sha256": "70ea3d7292d46b8a86e6039d3de423b5316764c218e7bd0af8895cb90e395e4e"
     },
     {
+      "id": "artillery_ready_v2",
+      "file": "artillery_ready_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "c5657d574c122a37a8ae5ca4ec285e3778d922c7853466d7beea317325143c25",
+      "variantOf": "artillery_ready"
+    },
+    {
+      "id": "artillery_ready_v3",
+      "file": "artillery_ready_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "e18925edb54a9bd9187d77819e3afa8cc88210e1434effd44aa5b6de07007a8c",
+      "variantOf": "artillery_ready"
+    },
+    {
       "id": "artillery_reload",
       "file": "artillery_reload.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "c5017395168ada767e83c3b4dad0ecc6cd3093fc71679243cec303b148f71a1c"
+    },
+    {
+      "id": "artillery_reload_v2",
+      "file": "artillery_reload_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "7731dad6bec1d72b01cce4b178c2436c509fdbc2af31685ee9c7c0ed590b53cf",
+      "variantOf": "artillery_reload"
+    },
+    {
+      "id": "artillery_reload_v3",
+      "file": "artillery_reload_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "4e28c56f567109d564ccbe8890bffcdfeea2472919e7e224ec7af6a55dab58ac",
+      "variantOf": "artillery_reload"
     },
     {
       "id": "building_complete",
@@ -71,10 +211,38 @@
       "sha256": "3af044c5c2143b85d93fa96c9c17244ae2c601cfd2c70b93c7dec880b5faca87"
     },
     {
+      "id": "building_complete_v2",
+      "file": "building_complete_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "22777f59bf9026e3f9836e886c76f9f045bf75823a9c4256f894292d982eb701",
+      "variantOf": "building_complete"
+    },
+    {
+      "id": "building_complete_v3",
+      "file": "building_complete_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "0b883b0a0deedeb88d85de506321174448f5ae0c7013676a652f91e23a702521",
+      "variantOf": "building_complete"
+    },
+    {
       "id": "cavalry_attack",
       "file": "cavalry_attack.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "639b694e4cbfdacbe01cd0c9a7166deb6e884ad580ef4e1dfcc2ed0d20fa8aa2"
+    },
+    {
+      "id": "cavalry_attack_v2",
+      "file": "cavalry_attack_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "d9792cb2eae284e20c899a60c779296b0e3ae27fe3eb6d13fd70a92cee9bfcb6",
+      "variantOf": "cavalry_attack"
+    },
+    {
+      "id": "cavalry_attack_v3",
+      "file": "cavalry_attack_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "a7d88793398467232d8413dc58875a0fdbfe12bc2d08e16ab39c232f86818225",
+      "variantOf": "cavalry_attack"
     },
     {
       "id": "cavalry_move",
@@ -83,10 +251,38 @@
       "sha256": "f023484c012add07b51de3863c5281b037cb04e52d877059c84a24ad3d460229"
     },
     {
+      "id": "cavalry_move_v2",
+      "file": "cavalry_move_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "70fb5706aac0526fa86f93808fb3e96197e669ee1853f316dc8de39e734ecedb",
+      "variantOf": "cavalry_move"
+    },
+    {
+      "id": "cavalry_move_v3",
+      "file": "cavalry_move_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "128c41f2a024dfa113527bfac28e030301f3de1a494ab79086bc16e4e9a18cf4",
+      "variantOf": "cavalry_move"
+    },
+    {
       "id": "commander_attack",
       "file": "commander_attack.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "aa292282cf27be1636356fa11dd1c867cdf6d068159bc42f17f42d5ef0b74ed8"
+    },
+    {
+      "id": "commander_attack_v2",
+      "file": "commander_attack_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "6725966e62dca01a5d1f5eeb2e088904c07434d8df11b5f0f071b6bf6ae40335",
+      "variantOf": "commander_attack"
+    },
+    {
+      "id": "commander_attack_v3",
+      "file": "commander_attack_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "6b12fa6912b4bf808abfefdad803f313fa955f64f809f93171efd27cfc335b50",
+      "variantOf": "commander_attack"
     },
     {
       "id": "commander_build",
@@ -95,10 +291,38 @@
       "sha256": "d591d97dda7e809516617d2104669b465a771c66d358ea162053bb718bf72748"
     },
     {
+      "id": "commander_build_v2",
+      "file": "commander_build_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "a3d3a5d9835b9eaca581bf33cba687a83b8cd08bc7f010c9625d6b6d33ce7ee8",
+      "variantOf": "commander_build"
+    },
+    {
+      "id": "commander_build_v3",
+      "file": "commander_build_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3835aa893bdc8f784b713e9d2079a96e80d3e7f97a0c4655ad62fc78830ee570",
+      "variantOf": "commander_build"
+    },
+    {
       "id": "commander_defeat",
       "file": "commander_defeat.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "191555dbc3115c7f13f86daf6de7398d54b04bf603a2edeeb1a486fcf6031d5c"
+    },
+    {
+      "id": "commander_defeat_v2",
+      "file": "commander_defeat_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "1aa5e18de8c720d53ba53658366ce03ffed951fea242560d650257f1cb587043",
+      "variantOf": "commander_defeat"
+    },
+    {
+      "id": "commander_defeat_v3",
+      "file": "commander_defeat_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "40a087d78f693131f34cf8abd0770b3cf1321b448efb8e24b0ee7375f40ddb35",
+      "variantOf": "commander_defeat"
     },
     {
       "id": "commander_dispatch",
@@ -107,10 +331,38 @@
       "sha256": "9b1a4c021ce95d4a17bb5a170223c825972a223bbd48a9849d2f250af7a67489"
     },
     {
+      "id": "commander_dispatch_v2",
+      "file": "commander_dispatch_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "dd2623449bd8dfa44a3f5e52f7f244e46fb4ae240ca221d524a44b4c0b50bfc2",
+      "variantOf": "commander_dispatch"
+    },
+    {
+      "id": "commander_dispatch_v3",
+      "file": "commander_dispatch_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "304eda62319914604873cd4af43e6f22c3e5b353c8f7ce67a4d826273b24577d",
+      "variantOf": "commander_dispatch"
+    },
+    {
       "id": "commander_move",
       "file": "commander_move.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "c1a1d1568eaf7e6a85a4a7a9e2ced96ca89a842f8eb169bf00854fc353a77b6a"
+    },
+    {
+      "id": "commander_move_v2",
+      "file": "commander_move_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "45c57206d7af1edacdcba1019c4ae023ef012e3580b1e25d9b63ef1f235c05ed",
+      "variantOf": "commander_move"
+    },
+    {
+      "id": "commander_move_v3",
+      "file": "commander_move_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "562fc56c8f214d3678692519e5d5f776b41d6da98f2565a9b3080213953be26e",
+      "variantOf": "commander_move"
     },
     {
       "id": "commander_ready",
@@ -119,10 +371,38 @@
       "sha256": "f64af28bed5dc00a6e2e0b5190788115767bf7d7a0bad658bc70842833c633ad"
     },
     {
+      "id": "commander_ready_v2",
+      "file": "commander_ready_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "ba2619c2587bc380a9f8704f454fd50bc1134188254eeadccf7700f591add845",
+      "variantOf": "commander_ready"
+    },
+    {
+      "id": "commander_ready_v3",
+      "file": "commander_ready_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3fb3ae9831cc216ff06733e13a32c23b2c70fa716d90eb0ca64cf288d5e0845e",
+      "variantOf": "commander_ready"
+    },
+    {
       "id": "commander_research",
       "file": "commander_research.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "3ada081f70e5638221a159509e77e30e0f33367e9dc2490326e67d9a0efc50ed"
+    },
+    {
+      "id": "commander_research_v2",
+      "file": "commander_research_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "a48acc7619599eb7f798443a74ea264e4d18a5c2a7ee1fc3be5521e1317044a9",
+      "variantOf": "commander_research"
+    },
+    {
+      "id": "commander_research_v3",
+      "file": "commander_research_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "86708ede10b912b172fbaf068ddf35ab88af9494dabf5a0bf3e6fed26d605d3a",
+      "variantOf": "commander_research"
     },
     {
       "id": "commander_victory",
@@ -131,10 +411,38 @@
       "sha256": "8f8d2c4a1d3c86e834ea6cb8207c4788ac01028bb0b284d8d9fab92cd6227020"
     },
     {
+      "id": "commander_victory_v2",
+      "file": "commander_victory_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "2a6290cb131ed269644916bf3d938d439e673703ba6e2fd45189e8faed80a3b6",
+      "variantOf": "commander_victory"
+    },
+    {
+      "id": "commander_victory_v3",
+      "file": "commander_victory_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "363be094cac2fe606cb81093e9071d5377a512f1f1105a3356c0b76ebd60b8f3",
+      "variantOf": "commander_victory"
+    },
+    {
       "id": "defeat",
       "file": "defeat.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "53e0b988bde6d9569a5f53d8a2e883435bb8141429e50ec7670e38d54500aabe"
+    },
+    {
+      "id": "defeat_v2",
+      "file": "defeat_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "4cc58f7b70c7bcd68abc797279cebb80830f713ab20841feec0543119e4bfd18",
+      "variantOf": "defeat"
+    },
+    {
+      "id": "defeat_v3",
+      "file": "defeat_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "341e21aeebde397f1679193a7cb7dc890812accd20cfb25575896e5778133c83",
+      "variantOf": "defeat"
     },
     {
       "id": "dispatch_arrived",
@@ -143,10 +451,38 @@
       "sha256": "28c9886a60d703b41effce9663dfb55e51e501c88a66439ed878d02431aedc88"
     },
     {
+      "id": "dispatch_arrived_v2",
+      "file": "dispatch_arrived_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "b06a816ddba77a6ef82613e45b27dca53d28431c80bbe40041de7cfe404f24e3",
+      "variantOf": "dispatch_arrived"
+    },
+    {
+      "id": "dispatch_arrived_v3",
+      "file": "dispatch_arrived_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "95fef63a56f82444b59682c84d90b7b7faf44c2e743ab6e15bf7fbbb1cf00d47",
+      "variantOf": "dispatch_arrived"
+    },
+    {
       "id": "enemy_sighted",
       "file": "enemy_sighted.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "ad8223fe5e750c480fc567e9088d33ce14bd8a0c6297494ce519c5b7fedf0514"
+    },
+    {
+      "id": "enemy_sighted_v2",
+      "file": "enemy_sighted_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "942d41f7b442dd65ac8feb9663bbf0019e6b986e0572913b83bae69e3f8eae15",
+      "variantOf": "enemy_sighted"
+    },
+    {
+      "id": "enemy_sighted_v3",
+      "file": "enemy_sighted_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "5a689132bc891ac77fd168a0ae232f957a3bbfaaf52ded7456c7304b961ccdd1",
+      "variantOf": "enemy_sighted"
     },
     {
       "id": "match_pause",
@@ -155,10 +491,38 @@
       "sha256": "001c2c5489f93587cecdecea4d0bbb11ea952e89cd647ef80fecf29b01d5637a"
     },
     {
+      "id": "match_pause_v2",
+      "file": "match_pause_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "93b0ae4559476c60375bd8437ffc929bec6c29d3deede01549e607884c22600f",
+      "variantOf": "match_pause"
+    },
+    {
+      "id": "match_pause_v3",
+      "file": "match_pause_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "394c4aafc28a9fff80e713bba0ce72b5409f31d82b84e8786450c6b5e134b1a6",
+      "variantOf": "match_pause"
+    },
+    {
       "id": "match_resume",
       "file": "match_resume.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "80142dc2c582308d48879cfaa2be21fe6b9e2804f3fc5fb6eed44708d11a2e17"
+    },
+    {
+      "id": "match_resume_v2",
+      "file": "match_resume_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "5fff41def437ae50afa7a2a8285ffaaa36cf32998be19aecaf6539ab18c3f6de",
+      "variantOf": "match_resume"
+    },
+    {
+      "id": "match_resume_v3",
+      "file": "match_resume_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "29abb20a49081e588348b57dcaae3f728f4a551c2e9b95023de388c4f8eeed75",
+      "variantOf": "match_resume"
     },
     {
       "id": "match_start",
@@ -167,10 +531,38 @@
       "sha256": "4467bfc9e0d702808c494a906951415088b749357cd34339844481233ec34c33"
     },
     {
+      "id": "match_start_v2",
+      "file": "match_start_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "12be84e226b0b02313ab990b9f64c1708532dbba9b9e3845ef1e053627d7aca7",
+      "variantOf": "match_start"
+    },
+    {
+      "id": "match_start_v3",
+      "file": "match_start_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "0773ed24253c8336d2ae8dbb58011ea1c40131924f9db465253b8356b203aa28",
+      "variantOf": "match_start"
+    },
+    {
       "id": "research_complete",
       "file": "research_complete.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "10dca5f648aef0dfcf28dcec755c660cf4dea790e9f91b1de91c6c2545f82075"
+    },
+    {
+      "id": "research_complete_v2",
+      "file": "research_complete_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "bbad5ea9c1ae50d9b5295113d955c9757cfe867e05ba918ea9214c456f0cc29e",
+      "variantOf": "research_complete"
+    },
+    {
+      "id": "research_complete_v3",
+      "file": "research_complete_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "d782c14f8da440a050df626d3c73106e9ddf70fa27f8f14e90895124afe9490d",
+      "variantOf": "research_complete"
     },
     {
       "id": "soldier_attack",
@@ -179,10 +571,38 @@
       "sha256": "94a30a3ac130533f6567c176905bd8ac06bf2a7bf549a3d656f9a860c305440d"
     },
     {
+      "id": "soldier_attack_v2",
+      "file": "soldier_attack_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "bcb1ae6a42a57859610627d61f126c44387355cd3076d2577f41947134a34ac2",
+      "variantOf": "soldier_attack"
+    },
+    {
+      "id": "soldier_attack_v3",
+      "file": "soldier_attack_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "46052a571ba0d7c8ca5d218d41f5b8a3715e0269d6a06839a401c0466e6e23a7",
+      "variantOf": "soldier_attack"
+    },
+    {
       "id": "soldier_hold",
       "file": "soldier_hold.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "da11acc3d4cdb1c94b4435aab97b95f2a2f4961d16a97ef50a21fa43bf173b7c"
+    },
+    {
+      "id": "soldier_hold_v2",
+      "file": "soldier_hold_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "0848c5803ca7e1099ceb51ed236e50afb1cac4dd0eec9266ed8d007ebfc5b8d6",
+      "variantOf": "soldier_hold"
+    },
+    {
+      "id": "soldier_hold_v3",
+      "file": "soldier_hold_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "687a1d28c4178f1791a8cd1052ac6705fd4de2985227497b14d8f4f700895a49",
+      "variantOf": "soldier_hold"
     },
     {
       "id": "soldier_move",
@@ -191,10 +611,38 @@
       "sha256": "23213d872cfeff2b0a62066f42fea0724f589850389b7888f1cda4351f52b76d"
     },
     {
+      "id": "soldier_move_v2",
+      "file": "soldier_move_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3ee5855675fe8a3ef8533ead9583619346572bf1da8433194e3a48ec44a25491",
+      "variantOf": "soldier_move"
+    },
+    {
+      "id": "soldier_move_v3",
+      "file": "soldier_move_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "87d3793aee59df3c26d125b83875672cfd84c5c530c1ab9db637e7211eec84df",
+      "variantOf": "soldier_move"
+    },
+    {
       "id": "soldier_out_of_range",
       "file": "soldier_out_of_range.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "aa7a584da2e72da73b7c524ccc78cb0e2c84a80f273795ebd29d791e2744bd95"
+    },
+    {
+      "id": "soldier_out_of_range_v2",
+      "file": "soldier_out_of_range_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "60a94d253a91595e155e54c8c101f7274c0f32472db39bbfce740b6fc6c005d1",
+      "variantOf": "soldier_out_of_range"
+    },
+    {
+      "id": "soldier_out_of_range_v3",
+      "file": "soldier_out_of_range_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "8e9eed7fb8baa0149fd6a7306cfe4a48f178fa57adfc78b201e339fe045046eb",
+      "variantOf": "soldier_out_of_range"
     },
     {
       "id": "soldier_retreat",
@@ -203,10 +651,38 @@
       "sha256": "3e41c1ae307d0bc9952d134bc82c65d3013e5160c7ce4c7286e9aae77bb6aaf2"
     },
     {
+      "id": "soldier_retreat_v2",
+      "file": "soldier_retreat_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "12540287ed755d9111eea0717c77524282a9bd12a1fa6bc0283359ef8ba856c8",
+      "variantOf": "soldier_retreat"
+    },
+    {
+      "id": "soldier_retreat_v3",
+      "file": "soldier_retreat_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "73a98570576bf849ef253f30fccf16df21a54a6d76882b15367dd71bd02c0c35",
+      "variantOf": "soldier_retreat"
+    },
+    {
       "id": "soldier_target_lost",
       "file": "soldier_target_lost.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "3a577c4ddd47e8027cdb09c045988c042ed9b91b56a7eb4caf4448628245cd5d"
+    },
+    {
+      "id": "soldier_target_lost_v2",
+      "file": "soldier_target_lost_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "284a97e6b6950e7d6baed5914e7c599c9e6bc2f6a0c840a1c762112dec2c1a29",
+      "variantOf": "soldier_target_lost"
+    },
+    {
+      "id": "soldier_target_lost_v3",
+      "file": "soldier_target_lost_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "89ffc307424276e527960d37101f9684c8589175eae29c8aee6e12f20afd97d3",
+      "variantOf": "soldier_target_lost"
     },
     {
       "id": "tutorial_build",
@@ -215,10 +691,38 @@
       "sha256": "693636f216204710c942512c48f01433e4e460043471cb358c2a93ffa254c967"
     },
     {
+      "id": "tutorial_build_v2",
+      "file": "tutorial_build_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "83eec96f8561ab5ee72ed2e0c5417ac458533566023db234c603a44f7c72fbd6",
+      "variantOf": "tutorial_build"
+    },
+    {
+      "id": "tutorial_build_v3",
+      "file": "tutorial_build_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "57ef4f2042c2ca3edef0e361c06c10fb41d4b2a3fac3f3b219bec777dd84af49",
+      "variantOf": "tutorial_build"
+    },
+    {
       "id": "tutorial_camera",
       "file": "tutorial_camera.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "f25a9868299ccc02c96aff31cf701fa12f1be589e4efd35aa6e4d08b0cf3ba43"
+    },
+    {
+      "id": "tutorial_camera_v2",
+      "file": "tutorial_camera_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "23e4a5b2447bfdebf21decb7970da8f68f1aec867d5bec4c610da1db387a38e5",
+      "variantOf": "tutorial_camera"
+    },
+    {
+      "id": "tutorial_camera_v3",
+      "file": "tutorial_camera_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "9442aeeb4fddb799b2087064cf2ab0babe0fcb87eb6056617cee58d2b67b009e",
+      "variantOf": "tutorial_camera"
     },
     {
       "id": "tutorial_complete",
@@ -227,10 +731,38 @@
       "sha256": "800ea00a930e0f7d3580dbcfcee1a0427c8a0ab23763d17f94ea12c26cc49594"
     },
     {
+      "id": "tutorial_complete_v2",
+      "file": "tutorial_complete_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "172b6fd960d7b417fbb8b734f346ef6c4c5d174d22ad188a3e4e165538d8499c",
+      "variantOf": "tutorial_complete"
+    },
+    {
+      "id": "tutorial_complete_v3",
+      "file": "tutorial_complete_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "085d1401fa167557095b58fb1d4e1997cb35956589dc9b93b6e0aa2100dfc763",
+      "variantOf": "tutorial_complete"
+    },
+    {
       "id": "tutorial_dispatch",
       "file": "tutorial_dispatch.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "a555ed1f8f8ee6db27dcf49290072180021d8a28c043d65348853479d5f4a407"
+    },
+    {
+      "id": "tutorial_dispatch_v2",
+      "file": "tutorial_dispatch_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "0989ec827f8ce798bb30273873b1f351b52759c062aa6df419aa966681a9a2ec",
+      "variantOf": "tutorial_dispatch"
+    },
+    {
+      "id": "tutorial_dispatch_v3",
+      "file": "tutorial_dispatch_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "61ba25579a51d8cdec8f383ec3496e49cb7e3d59c357ab530bf7fc8efbfaaba3",
+      "variantOf": "tutorial_dispatch"
     },
     {
       "id": "tutorial_fight",
@@ -239,10 +771,38 @@
       "sha256": "0194219de76ced379ca7737d6a625f2c002f9699a66554a560f8cb31304b959c"
     },
     {
+      "id": "tutorial_fight_v2",
+      "file": "tutorial_fight_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "49e3ac97e98dac8294eab15477321defaf6d94cf330b74a98f87ed17150f6613",
+      "variantOf": "tutorial_fight"
+    },
+    {
+      "id": "tutorial_fight_v3",
+      "file": "tutorial_fight_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "2d2fc82be95677d4ca03299468574ef1cba6231d41da9103d6106f71eab14350",
+      "variantOf": "tutorial_fight"
+    },
+    {
       "id": "tutorial_fog",
       "file": "tutorial_fog.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "0ca2deef79bbf0b361f489961de9e721b774ab3ad74d8a35b2e3e8336a941d00"
+    },
+    {
+      "id": "tutorial_fog_v2",
+      "file": "tutorial_fog_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "1dd229dced8cb47dbe77983242a3ffb0ee5499e4ed2f920d5ac6071c57079580",
+      "variantOf": "tutorial_fog"
+    },
+    {
+      "id": "tutorial_fog_v3",
+      "file": "tutorial_fog_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "5a5fe05ca5375d00b8d8c2061613b2cc7dedd03f1b35d1fd0d32d98bf767b423",
+      "variantOf": "tutorial_fog"
     },
     {
       "id": "tutorial_gather",
@@ -251,10 +811,38 @@
       "sha256": "7be636c715af00a48f17af248edde5ed605883be213de298659896eb8493c8c7"
     },
     {
+      "id": "tutorial_gather_v2",
+      "file": "tutorial_gather_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "334f431d16fe36c6cc4c96c85145e0d1090beaf451f3e467a8989a36d7782eb0",
+      "variantOf": "tutorial_gather"
+    },
+    {
+      "id": "tutorial_gather_v3",
+      "file": "tutorial_gather_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "2e55b6c8972dceb6fdbc020869359b5208054badf9332103ce0a4514d2dd2c0b",
+      "variantOf": "tutorial_gather"
+    },
+    {
       "id": "tutorial_train",
       "file": "tutorial_train.wav",
       "model": "gemini-3.8-flash-lite-tts",
       "sha256": "f3343fa27f3c63f6c459817cbf04a664917fa24bbfdaac36ca9806270e5bb403"
+    },
+    {
+      "id": "tutorial_train_v2",
+      "file": "tutorial_train_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "89893c864c7fc2010faddbe85b1cebc2c6ce650c09527831ac13ceba71fa776f",
+      "variantOf": "tutorial_train"
+    },
+    {
+      "id": "tutorial_train_v3",
+      "file": "tutorial_train_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "758d4812980c8d6a415e6b3579a8b6a9849c2c11deda255a88ac52635b0f22e7",
+      "variantOf": "tutorial_train"
     },
     {
       "id": "victory",
@@ -263,10 +851,38 @@
       "sha256": "5d1acde2550a72bd3e8e60b7ae64bd1e36170f864b7ae825c07c7b79ee840938"
     },
     {
+      "id": "victory_v2",
+      "file": "victory_v2.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "272690af4ad3f2c4bc9aefec6d8e910b60b08add6133aeca54b348be5a3b62b4",
+      "variantOf": "victory"
+    },
+    {
+      "id": "victory_v3",
+      "file": "victory_v3.wav",
+      "model": "gemini-3.8-flash-lite-tts",
+      "sha256": "3a9da84b4ecaca216851c34a9c20af8d6929e96b9e4a556bd3401f1c9340398b",
+      "variantOf": "victory"
+    },
+    {
       "id": "worker_build",
       "file": "worker_build.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "8aa3c153f09646dc014b1af03e3222608c264ec58d0da7838d3c2209ba07bef5"
+    },
+    {
+      "id": "worker_build_v2",
+      "file": "worker_build_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "aacbc4fccfa905ace28efb6925de34c881515046d55d3200623d1438a10deb4c",
+      "variantOf": "worker_build"
+    },
+    {
+      "id": "worker_build_v3",
+      "file": "worker_build_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "457078603fb7f61da2ce5288613516ea761cbafd68830a4294f3119cf29d99e6",
+      "variantOf": "worker_build"
     },
     {
       "id": "worker_chop",
@@ -275,10 +891,38 @@
       "sha256": "ceeb6f40f8ce19c49e03ee0420c711881d17ad32ea8b15037d85e3af04cb08ff"
     },
     {
+      "id": "worker_chop_v2",
+      "file": "worker_chop_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "f1c8b40a21fb48c256de53092587dd807bf5fe930b7819a1ec7bbe2e393648c6",
+      "variantOf": "worker_chop"
+    },
+    {
+      "id": "worker_chop_v3",
+      "file": "worker_chop_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "b89cb2b729c4b7792edbf6786006a8134dd8cf852b5a43641a1d37c26750bb4d",
+      "variantOf": "worker_chop"
+    },
+    {
       "id": "worker_deposit",
       "file": "worker_deposit.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "1db712a32286b781621ed027cd8842c8211dfb9b13d259cad52f70be09f6299d"
+    },
+    {
+      "id": "worker_deposit_v2",
+      "file": "worker_deposit_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3253ab7748ef9b821393b51afa48a983d64451bf34c416824992959593628bbd",
+      "variantOf": "worker_deposit"
+    },
+    {
+      "id": "worker_deposit_v3",
+      "file": "worker_deposit_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "7a1c15d5b3160df72c90a7ce8cc3dcae1740c4b294bf9aaf2184158fcfec5e18",
+      "variantOf": "worker_deposit"
     },
     {
       "id": "worker_farm",
@@ -287,10 +931,38 @@
       "sha256": "172298c8c2b630a36eeed3c55d07c75abf9ec192424ca93edca50230e7696a1b"
     },
     {
+      "id": "worker_farm_v2",
+      "file": "worker_farm_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "590192b3771c0009fb91965b886a854c894da557c8be6004506674b3d53cbb35",
+      "variantOf": "worker_farm"
+    },
+    {
+      "id": "worker_farm_v3",
+      "file": "worker_farm_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "0e158c1e2b79ed66f8d07ac9bc1107836c91d20f673eb1e90310e1e8193bf8f3",
+      "variantOf": "worker_farm"
+    },
+    {
       "id": "worker_fish",
       "file": "worker_fish.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "49f8e023d6b0649ac04a83e8d39fb386f1cd243cbb785e61c56745f9ba94ae0d"
+    },
+    {
+      "id": "worker_fish_v2",
+      "file": "worker_fish_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "c2a398e29cfb302c840f11b63de3f1e09fc3a2100a8494af7be992db28d123b6",
+      "variantOf": "worker_fish"
+    },
+    {
+      "id": "worker_fish_v3",
+      "file": "worker_fish_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "d71d9c8713a3dd78f6234cbefd1c623a73f80800d3c027ae6359cb3f4304127d",
+      "variantOf": "worker_fish"
     },
     {
       "id": "worker_full",
@@ -299,10 +971,38 @@
       "sha256": "656e84c8cfcd96865d6a2f16c17d29dcef6e92b35618ae868743b57d95d4fcbc"
     },
     {
+      "id": "worker_full_v2",
+      "file": "worker_full_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "1c2a718ea72f8cd35c7ca60618931dc7ae7145e9fe299e2d24b6ac66b5843a1b",
+      "variantOf": "worker_full"
+    },
+    {
+      "id": "worker_full_v3",
+      "file": "worker_full_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "dd9ea53a0f03292a1b86bd9cef1140b2db956cc18376bbdc55ea6c084e759a76",
+      "variantOf": "worker_full"
+    },
+    {
       "id": "worker_gather",
       "file": "worker_gather.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "adec753cbc106fc20dc07d9d6594d620b1829114b86161fe6dcb2700d48dca2a"
+    },
+    {
+      "id": "worker_gather_v2",
+      "file": "worker_gather_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3915b7e56f7879dea7a8a44d9eb73ebafda4003687195fa59b290b6662e36c80",
+      "variantOf": "worker_gather"
+    },
+    {
+      "id": "worker_gather_v3",
+      "file": "worker_gather_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "51917f917b2b1413ebfb148f533430d842f2377d725a49e77f0d889f1016f62e",
+      "variantOf": "worker_gather"
     },
     {
       "id": "worker_hunt",
@@ -311,10 +1011,38 @@
       "sha256": "f3b7d1d113dbd2005b3353e27a5a831ad85d62da47fca131840f89453cc18846"
     },
     {
+      "id": "worker_hunt_v2",
+      "file": "worker_hunt_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "50b352291b5f1869c91fd807f5ea3dab79eded64391e540ce81ff357307741f3",
+      "variantOf": "worker_hunt"
+    },
+    {
+      "id": "worker_hunt_v3",
+      "file": "worker_hunt_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "3f76a78d3737610769c8eef7787191e9f760fa2bdca38ff9308123e7326ffa5a",
+      "variantOf": "worker_hunt"
+    },
+    {
       "id": "worker_mine",
       "file": "worker_mine.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "b4841a01ba6a44d2935fa58595bc94b5f1c7254fea79809c54cf30c0cab4538c"
+    },
+    {
+      "id": "worker_mine_v2",
+      "file": "worker_mine_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "9e7a8ec4e66b9e2b92cfce79bed16b5b022a1368c3e5c7178d270f87aa207ee4",
+      "variantOf": "worker_mine"
+    },
+    {
+      "id": "worker_mine_v3",
+      "file": "worker_mine_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "2a4ec5ccee24bac7bed8f999a27633b9662e94b010e63aee533fadf2ce7622a8",
+      "variantOf": "worker_mine"
     },
     {
       "id": "worker_move",
@@ -323,16 +1051,59 @@
       "sha256": "d0b841211d1ad3e1cbf54586e299614558085a7205db19f55ecf5995602bba16"
     },
     {
+      "id": "worker_move_v2",
+      "file": "worker_move_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "05673df3280c00244c3356ffd362b58781d1236e952cdaedce524cf2f6aac1fa",
+      "variantOf": "worker_move"
+    },
+    {
+      "id": "worker_move_v3",
+      "file": "worker_move_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "c007f3b1e539bfa5d90d6c7b470d4c26c242cc24efd4b827c91b8cfdc0803567",
+      "variantOf": "worker_move"
+    },
+    {
       "id": "worker_no_resource",
       "file": "worker_no_resource.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "802244692810b143af7d359f823852f9e4e271144cbb670a9f8a2d691160f5ee"
     },
     {
+      "id": "worker_no_resource_v2",
+      "file": "worker_no_resource_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "301368e65b3c2ab92658def7c51dc38f390f8963ab54eebb61a3fd38baf2c280",
+      "variantOf": "worker_no_resource"
+    },
+    {
+      "id": "worker_no_resource_v3",
+      "file": "worker_no_resource_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "febb5f73029d7ec4c41c19ba7f58ca01673645ad8b70b5b0856b2ce0675a20bf",
+      "variantOf": "worker_no_resource"
+    },
+    {
       "id": "worker_repair",
       "file": "worker_repair.wav",
       "model": "gemini-3.8-flash-tts",
       "sha256": "51f9c3547874172fcf972ecba24393e9aa05c4033798c70c072fcb4295b73704"
+    },
+    {
+      "id": "worker_repair_v2",
+      "file": "worker_repair_v2.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "5d036596874b27edb90b64671a73f1a43688d420ecc12316ed4dc4a9da1ccc6e",
+      "variantOf": "worker_repair"
+    },
+    {
+      "id": "worker_repair_v3",
+      "file": "worker_repair_v3.wav",
+      "model": "gemini-3.8-flash-tts",
+      "sha256": "2e357c2215f7f8b77f78f15f59f816aff40684d381a2d1f740b8d2d2fec25fc7",
+      "variantOf": "worker_repair"
     }
-  ]
+  ],
+  "variantPolicy": "Each voice cue has two alternate deliveries. The client avoids immediate repeats and selects a different variant for the next playback."
 }

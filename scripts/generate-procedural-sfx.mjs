@@ -43,5 +43,15 @@ function wave({duration, notes = [], noise = 0}) {
 }
 
 await mkdir(outDir, {recursive: true});
-for (const [name, spec] of Object.entries(sounds)) await writeFile(`${outDir}/${name}.wav`, wave(spec));
-console.log(`generated ${Object.keys(sounds).length} procedural effects in ${outDir}`);
+for (const [name, spec] of Object.entries(sounds)) {
+  await writeFile(`${outDir}/${name}.wav`, wave(spec));
+  for (const [suffix, rateScale, pitchScale] of [['_v2', 0.93, 1.04], ['_v3', 1.08, 0.97]]) {
+    const variant = {
+      ...spec,
+      duration: spec.duration / rateScale,
+      notes: (spec.notes ?? []).map(([frequency, start, length]) => [frequency * pitchScale, start / rateScale, length / rateScale]),
+    };
+    await writeFile(`${outDir}/${name}${suffix}.wav`, wave(variant));
+  }
+}
+console.log(`generated ${Object.keys(sounds).length * 3} procedural effects in ${outDir}`);
