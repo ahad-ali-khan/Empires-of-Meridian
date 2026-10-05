@@ -10,11 +10,14 @@ import {
   technologyById,
   productionName,
   supportByUnit,
+  frontierRules,
+  treasureDefinitions,
+  treasureById,
 } from '../../content/src/index';
 import {CONTENT_VERSION} from '../../content/src/index';
 import {visibleTo, updateVision, observedEntities, FOG_CELL} from './visibility';
 import {coastAt, landAt, seedHash, inlandWater, terrainHeight} from './terrain';
-import {findPath, blocked, approachRange, invalidateNavigation, nearestPassable} from './navigation';
+import {findPath, blocked, approachRange, invalidateNavigation, nearestPassable, reachableGround} from './navigation';
 import {wallSpans, inWall, wallPlacementReason} from './walls';
 import {edgeDistance, halfBounds, perimeterPoint} from './spatial';
 import {chooseIntent, DEFAULT_AI_POLICY, featuresFor, teacherIntent} from './ai-policy';
@@ -33,9 +36,21 @@ import {
   type Stance,
 } from '../../protocol/src/index';
 
-export const MAP_VERSION = 5;
+export const MAP_VERSION = 6;
 type EntityCategory = 'unit' | 'building' | 'resource' | 'projectile' | 'treasure' | 'animal';
-type Task = 'idle' | 'move' | 'gather' | 'carry' | 'build' | 'attack' | 'dead' | 'garrison' | 'heal';
+type Task =
+  | 'idle'
+  | 'move'
+  | 'gather'
+  | 'carry'
+  | 'build'
+  | 'attack'
+  | 'dead'
+  | 'garrison'
+  | 'heal'
+  | 'collect'
+  | 'claim'
+  | 'revive';
 export interface QueueItem {
   id?: number;
   kind: string;
@@ -97,6 +112,19 @@ export interface Entity {
   beforeFlee?: {task: Task; targetId?: number; resourceTargetId?: number; destX?: number; destZ?: number};
   lastTargetPosition?: {x: number; z: number};
   lastOrder?: number;
+  tradeSite?: boolean;
+  siteIncome?: ResourceKind;
+  captureOwner?: PlayerId;
+  captureProgress?: number;
+  captureContested?: boolean;
+  incomeProgress?: number;
+  treasureId?: string;
+  treasureTargetId?: number;
+  guardOf?: number;
+  incapacitatedAt?: number;
+  recoveryProgress?: number;
+  interactionProgress?: number;
+  gatherRemainder?: number;
   orders?: Command[];
   directive?: {
     kind: 'attack-move' | 'patrol' | 'guard';
@@ -143,6 +171,10 @@ export interface PlayerState {
     idleWorkerTicks: number;
     dispatches: number;
     commands: number;
+    tradeIncome: Resources;
+    exchanges: number;
+    treasures: number;
+    sitesCaptured: number;
   };
 }
 export interface AiTrace {
@@ -243,7 +275,18 @@ function player(id: PlayerId, populationCap: number): PlayerState {
     researched: [],
     usedDispatches: [],
     pendingDispatches: [],
-    stats: {gathered: emptyResources(), unitsLost: 0, unitsKilled: 0, idleWorkerTicks: 0, dispatches: 0, commands: 0},
+    stats: {
+      gathered: emptyResources(),
+      unitsLost: 0,
+      unitsKilled: 0,
+      idleWorkerTicks: 0,
+      dispatches: 0,
+      commands: 0,
+      tradeIncome: emptyResources(),
+      exchanges: 0,
+      treasures: 0,
+      sitesCaptured: 0,
+    },
   };
 }
 function dist(a: {x: number; z: number}, b: {x: number; z: number}) {
@@ -492,28 +535,74 @@ export function createMatch(config: MatchConfig): MatchState {
         break;
       }
     }
-  addEntity(state, {
-    owner: 0,
-    kind: 'treasure',
-    category: 'treasure',
-    x: 80 * WORLD_SCALE,
-    z: 54 * WORLD_SCALE,
-    hp: 1,
-    maxHp: 1,
-    amount: 7500,
-    task: 'idle',
-    carry: {},
-    cooldown: 0,
-    range: 0,
-    speed: 0,
-    damage: 0,
-    population: 0,
-    progress: 10000,
-    queue: [],
-    stance: 'no-attack',
-    model: 'treasure',
-    visible: true,
-  });
+  const frontierStarts = state.entities.filter((e) => e.kind === 'explorer');
+  function objectivePosition(kind: string, x: number, z: number) {
+    const reachability = reachableGround(state, frontierStarts);
+    for (let radius = 0; radius <= 12; radius++)
+      for (let dz = -radius; dz <= radius; dz++)
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+          const px = Math.trunc(x + dx * 4 * 256),
+            pz = Math.trunc(z + dz * 4 * 256);
+          if (placementReason(state, kind, px, pz)) continue;
+          const end = {x: px, z: pz + Math.ceil((buildingById.get(kind)?.footprint[1] ?? 2) * 256) + 450};
+          if (blocked(state, end.x, end.z)) continue;
+          const cell = Math.floor(end.z / 256) * reachability.n + Math.floor(end.x / 256);
+          if (!reachability.cells[cell]) continue;
+          return {x: px, z: pz};
+        }
+  }
+  for (const ratio of [0.32, 0.5, 0.68]) {
+    const z = Math.trunc(size * ratio),
+      position = objectivePosition('tradePost', Math.trunc(coastAt(z, size, config.seed) * 0.5), z);
+    if (!position) continue;
+    const site = building(state, 1, 'tradePost', position.x, position.z);
+    site.owner = 0;
+    site.tradeSite = true;
+    site.siteIncome = 'coin';
+    site.captureProgress = 0;
+    site.incomeProgress = 0;
+  }
+  const treasurePositions = [
+    ...frontierStarts.map((e) => ({x: e.x - 14 * 256, z: e.z})),
+    {x: Math.trunc(size * 0.4), z: Math.trunc(size * 0.42)},
+    {x: Math.trunc(size * 0.36), z: Math.trunc(size * 0.6)},
+  ];
+  for (const [index, desired] of treasurePositions.entries()) {
+    const position = objectivePosition('house', desired.x, desired.z);
+    if (!position) continue;
+    const definition = treasureDefinitions[index < frontierStarts.length ? 0 : 1 + (seedHash(config.seed, index) % 2)];
+    const chest = addEntity(state, {
+      owner: 0,
+      kind: 'treasure',
+      category: 'treasure',
+      ...position,
+      hp: 1,
+      maxHp: 1,
+      amount: 1,
+      task: 'idle',
+      carry: {},
+      cooldown: 0,
+      range: 0,
+      speed: 0,
+      damage: 0,
+      population: 0,
+      progress: 10000,
+      queue: [],
+      stance: 'no-attack',
+      model: 'treasure',
+      visible: true,
+      treasureId: definition.id,
+    });
+    for (let i = 0; i < definition.guards; i++) {
+      const spawn = nearestPassable(state, chest.x + (i ? 800 : -800), chest.z + 600);
+      if (!spawn) continue;
+      const guard = unit(state, 1, 'militia', spawn[0], spawn[1]);
+      guard.owner = 0;
+      guard.guardOf = chest.id;
+      guard.stance = 'aggressive';
+    }
+  }
   updateVision(state);
   return state;
 }
@@ -577,6 +666,9 @@ const unitOrderTypes = [
   'heal',
   'resume-build',
   'garrison',
+  'collect-treasure',
+  'claim-site',
+  'revive',
 ];
 function orderReason(state: MatchState, e: Entity, c: UnitCommand) {
   if (e.garrisonedIn) return 'Release sheltered units before ordering them.';
@@ -592,6 +684,22 @@ function orderReason(state: MatchState, e: Entity, c: UnitCommand) {
   if (!('targetId' in c)) return 'Invalid unit order.';
   const t = state.entities.find((t) => t.id === c.targetId);
   if (!t || t.remembered || !canSee(state, e.owner as PlayerId, t)) return 'That target is no longer visible.';
+  if (c.type === 'collect-treasure')
+    return e.kind === 'explorer' &&
+      t.category === 'treasure' &&
+      t.hp > 0 &&
+      t.amount > 0 &&
+      !!treasureById.get(t.treasureId ?? '')
+      ? ''
+      : 'Select an explorer and an unclaimed treasure.';
+  if (c.type === 'claim-site')
+    return e.category === 'unit' && t.tradeSite && t.hp > 0 && t.owner !== e.owner
+      ? ''
+      : 'Select units and a neutral or opposing trade site.';
+  if (c.type === 'revive')
+    return e.category === 'unit' && t.owner === e.owner && t.incapacitatedAt !== undefined && t.id !== e.id
+      ? ''
+      : 'Select a living ally and an incapacitated explorer.';
   if (c.type === 'guard')
     return t.hp > 0 && t.owner === e.owner && t.id !== e.id && ['unit', 'building'].includes(t.category)
       ? ''
@@ -610,6 +718,7 @@ function orderReason(state: MatchState, e: Entity, c: UnitCommand) {
     return e.category === 'unit' &&
       e.damage > 0 &&
       t.hp > 0 &&
+      !t.tradeSite &&
       (t.owner !== e.owner || t.kind === 'sheep') &&
       ['unit', 'building', 'animal'].includes(t.category)
       ? ''
@@ -640,6 +749,8 @@ function orderReason(state: MatchState, e: Entity, c: UnitCommand) {
 }
 function startUnitOrder(state: MatchState, e: Entity, c: UnitCommand) {
   e.directive = undefined;
+  e.treasureTargetId = undefined;
+  e.interactionProgress = 0;
   e.attackAt = undefined;
   e.attackStart = undefined;
   e.lastTargetPosition = undefined;
@@ -655,7 +766,12 @@ function startUnitOrder(state: MatchState, e: Entity, c: UnitCommand) {
   e.recoveryCount = 0;
   e.progressAt = undefined;
   e.progressDistance = undefined;
-  if (c.type === 'guard' || c.type === 'heal') {
+  if (c.type === 'collect-treasure' || c.type === 'claim-site' || c.type === 'revive') {
+    e.task = c.type === 'collect-treasure' ? 'collect' : c.type === 'claim-site' ? 'claim' : 'revive';
+    e.targetId = c.targetId;
+    e.resourceTargetId = undefined;
+    if (c.type === 'collect-treasure') e.treasureTargetId = c.targetId;
+  } else if (c.type === 'guard' || c.type === 'heal') {
     e.task = c.type === 'heal' ? 'heal' : 'idle';
     e.targetId = c.targetId;
     if (c.type === 'guard')
@@ -753,10 +869,11 @@ function updateDirective(state: MatchState, e: Entity) {
       state,
       e,
       (t) =>
-        t.owner > 0 &&
+        (t.owner > 0 || t.guardOf !== undefined) &&
         t.owner !== e.owner &&
         !(t.id === d.ignoredTarget && state.tick < (d.ignoreUntil ?? 0)) &&
         ['unit', 'building'].includes(t.category) &&
+        !t.tradeSite &&
         !t.garrisonedIn &&
         canSee(state, e.owner as PlayerId, t) &&
         dist(e, t) <= 8 * WORLD_SCALE &&
@@ -810,6 +927,60 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
     state.commandLog.push(structuredClone(c));
     return;
   }
+  if (c.type === 'exchange') {
+    const market = owned(state, c.buildingId, p.id);
+    if (
+      !market ||
+      market.kind !== 'market' ||
+      market.progress < 10000 ||
+      !['provisions', 'timber', 'metal'].includes(c.resource) ||
+      !['buy', 'sell'].includes(c.direction)
+    ) {
+      event(state, 'Choose a completed owned market and a valid exchange.', 'rejected', p.id);
+      return;
+    }
+    const debit = c.direction === 'buy' ? 'coin' : c.resource,
+      credit = c.direction === 'buy' ? c.resource : 'coin';
+    const debitAmount = c.direction === 'buy' ? frontierRules.buyCoin : frontierRules.exchangeLot,
+      creditAmount = c.direction === 'buy' ? frontierRules.exchangeLot : frontierRules.sellCoin;
+    if (p.resources[debit] < debitAmount) {
+      event(state, 'Not enough resources for this exchange.', 'rejected', p.id);
+      return;
+    }
+    p.resources[debit] -= debitAmount;
+    p.resources[credit] += creditAmount;
+    p.stats.exchanges++;
+    event(
+      state,
+      `${c.direction === 'buy' ? 'Bought' : 'Sold'} ${frontierRules.exchangeLot / 100} ${c.resource}.`,
+      'trade',
+      p.id,
+    );
+  }
+  if (c.type === 'site-income') {
+    const site = owned(state, c.siteId, p.id);
+    if (!site?.tradeSite || !['provisions', 'timber', 'coin', 'metal'].includes(c.resource)) {
+      event(state, 'Select an owned trade site.', 'rejected', p.id);
+      return;
+    }
+    site.siteIncome = c.resource;
+    event(state, `Trade site income set to ${c.resource}.`, 'trade', p.id);
+  }
+  if (c.type === 'recall-explorer') {
+    const explorer = state.entities.find(
+      (e) => e.id === c.entityId && e.owner === p.id && e.kind === 'explorer' && e.incapacitatedAt !== undefined,
+    );
+    const hall = state.entities.find((e) => e.owner === p.id && e.kind === 'hall' && e.hp > 0 && e.progress === 10000);
+    const point = hall && nearestPassable(state, hall.x, hall.z + approachRange(hall) + 500, p.id);
+    if (!explorer || !point || p.resources.coin < frontierRules.recallCoin) {
+      event(state, 'Explorer return requires a completed hall, clear entrance and 100 Coin.', 'rejected', p.id);
+      return;
+    }
+    p.resources.coin -= frontierRules.recallCoin;
+    explorer.x = point[0];
+    explorer.z = point[1];
+    recoverExplorer(state, explorer);
+  }
   if (c.type === 'resign') {
     p.resigned = true;
     if (c.playerId === 1) state.winner = state.players.find((x) => x.id !== 1 && !x.resigned)?.id ?? 0;
@@ -825,6 +996,7 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
         stopped++;
         e.orders = [];
         e.directive = undefined;
+        e.treasureTargetId = undefined;
         e.attackAt = undefined;
         e.beforeFlee = undefined;
         e.fleeUntil = undefined;
@@ -1463,17 +1635,242 @@ function trafficClearance(state: MatchState, e: Entity, x: number, z: number) {
           clearance = Math.min(clearance, Math.max(Math.abs(x - other.x), Math.abs(z - other.z)));
   return clearance;
 }
+type EconomyView = Pick<MatchState, 'tick' | 'entities' | 'players'>;
+const economyStructures = new WeakMap<EconomyView, {tick: number; count: number; buildings: Entity[]}>();
+function economyBuildings(state: EconomyView) {
+  let cached = economyStructures.get(state);
+  if (!cached || cached.tick !== state.tick || cached.count !== state.entities.length) {
+    cached = {
+      tick: state.tick,
+      count: state.entities.length,
+      buildings: state.entities.filter((e) => ['market', 'tradePost'].includes(e.kind)),
+    };
+    economyStructures.set(state, cached);
+  }
+  return cached.buildings;
+}
+export function marketAreaRate(state: EconomyView, owner: PlayerId, point: {x: number; z: number}) {
+  return economyBuildings(state).some(
+    (e) =>
+      e.owner === owner &&
+      e.kind === 'market' &&
+      e.hp > 0 &&
+      e.progress === 10000 &&
+      dist(e, point) <= frontierRules.marketRadius,
+  )
+    ? frontierRules.marketRate
+    : 10000;
+}
+export function sitePayout(state: EconomyView, site: Entity) {
+  const p = state.players[site.owner - 1];
+  if (!p) return 0;
+  const depot = economyBuildings(state).some(
+    (e) =>
+      e.owner === p.id &&
+      e.kind === 'tradePost' &&
+      !e.tradeSite &&
+      e.hp > 0 &&
+      e.progress === 10000 &&
+      dist(e, site) <= frontierRules.marketRadius,
+  )
+    ? frontierRules.depotRate
+    : 10000;
+  return Math.trunc(
+    (frontierRules.siteIncome *
+      (councilRate(p.modifiers, 'market') + marketAreaRate(state, p.id, site) + depot - 20000)) /
+      10000,
+  );
+}
+function recoverExplorer(state: MatchState, e: Entity) {
+  e.incapacitatedAt = undefined;
+  e.recoveryProgress = undefined;
+  e.deathTick = undefined;
+  e.hp = Math.max(1, Math.trunc(e.maxHp / 2));
+  e.task = 'idle';
+  e.targetId = undefined;
+  e.path = undefined;
+  e.pathGoal = undefined;
+  e.attackAt = undefined;
+  e.cooldown = 40;
+  e.interactionProgress = 0;
+  event(state, 'Explorer recovered at half health.', 'explorer-recovered', e.owner as PlayerId);
+}
+function updateFrontier(state: MatchState) {
+  for (const site of state.entities.filter((e) => e.tradeSite && e.hp > 0).sort((a, b) => a.id - b.id)) {
+    const nearby = state.entities.filter(
+      (e) =>
+        e.category === 'unit' &&
+        e.hp > 0 &&
+        !e.garrisonedIn &&
+        e.owner > 0 &&
+        edgeDistance(e, site) <= frontierRules.siteRadius,
+    );
+    const owners = [...new Set(nearby.map((e) => e.owner))];
+    site.captureContested = owners.length > 1;
+    const claimants = nearby.filter(
+      (e) => e.task === 'claim' && e.targetId === site.id && e.working && e.owner !== site.owner,
+    );
+    if (!site.captureContested && claimants.length) {
+      const owner = claimants[0].owner as PlayerId;
+      if (site.captureOwner !== owner) {
+        site.captureOwner = owner;
+        site.captureProgress = 0;
+      }
+      site.captureProgress = (site.captureProgress ?? 0) + Math.min(3, claimants.length);
+      if (site.captureProgress >= frontierRules.siteCaptureTicks) {
+        site.owner = owner;
+        site.captureProgress = 0;
+        site.captureOwner = undefined;
+        site.incomeProgress = 0;
+        state.players[owner - 1].stats.sitesCaptured++;
+        event(state, 'Trade site secured. Choose its income in the selection panel.', 'site-captured', owner);
+      }
+    } else if (!claimants.length && !site.captureContested) {
+      site.captureProgress = Math.max(0, (site.captureProgress ?? 0) - 1);
+      if (!site.captureProgress) site.captureOwner = undefined;
+    }
+    if (site.owner && !site.captureContested && !(site.captureProgress ?? 0)) {
+      site.incomeProgress = (site.incomeProgress ?? 0) + 1;
+      if (site.incomeProgress >= frontierRules.siteIncomeTicks) {
+        const p = state.players[site.owner - 1],
+          kind = site.siteIncome ?? 'coin',
+          amount = sitePayout(state, site);
+        p.resources[kind] += amount;
+        p.stats.tradeIncome[kind] += amount;
+        site.incomeProgress = 0;
+        event(state, `Trade route delivered ${amount / 100} ${kind}.`, 'trade', p.id);
+      }
+    }
+  }
+  for (const e of state.entities.filter((e) => e.incapacitatedAt !== undefined)) {
+    const safe = state.entities.some(
+      (b) =>
+        b.owner === e.owner &&
+        ['hall', 'fort'].includes(b.kind) &&
+        b.hp > 0 &&
+        b.progress === 10000 &&
+        dist(e, b) <= 20 * 256,
+    );
+    const threatened = state.entities.some(
+      (t) =>
+        t.hp > 0 &&
+        t.owner !== e.owner &&
+        (t.owner > 0 || t.guardOf !== undefined) &&
+        t.category === 'unit' &&
+        dist(e, t) <= 10 * 256,
+    );
+    if (safe && !threatened) {
+      e.recoveryProgress = (e.recoveryProgress ?? 0) + 1;
+      if (e.recoveryProgress >= frontierRules.safeRecoveryTicks) recoverExplorer(state, e);
+    } else e.recoveryProgress = 0;
+  }
+}
 function updateUnit(state: MatchState, e: Entity) {
   if (e.hp <= 0 || e.garrisonedIn) return;
   e.moving = false;
   e.working = false;
   if (e.cooldown > 0) e.cooldown--;
   const p = e.owner ? state.players[e.owner - 1] : undefined;
+  if (e.guardOf !== undefined) {
+    const chest = state.entities.find((t) => t.id === e.guardOf && t.hp > 0);
+    const enemy =
+      chest &&
+      nearest(
+        state,
+        e,
+        (t) => t.owner > 0 && t.hp > 0 && t.category === 'unit' && !t.garrisonedIn && dist(t, chest) <= 8 * 256,
+      );
+    if (enemy) {
+      if (e.targetId !== enemy.id) {
+        e.attackAt = undefined;
+        e.path = undefined;
+      }
+      e.task = 'attack';
+      e.targetId = enemy.id;
+    } else if (chest && dist(e, chest) > 1600) {
+      e.task = 'move';
+      e.destX = chest.x + (e.id % 2 ? 800 : -800);
+      e.destZ = chest.z + 600;
+    } else {
+      e.task = 'idle';
+      e.attackAt = undefined;
+    }
+  }
+  if (e.task === 'idle' && e.treasureTargetId !== undefined) {
+    e.task = 'collect';
+    e.targetId = e.treasureTargetId;
+  }
+  if (e.task === 'collect' || e.task === 'claim' || e.task === 'revive') {
+    const target = state.entities.find((t) => t.id === e.targetId && (t.hp > 0 || t.incapacitatedAt !== undefined));
+    if (!target || (e.owner && !canSee(state, e.owner as PlayerId, target))) {
+      e.task = 'idle';
+      e.treasureTargetId = undefined;
+      e.targetId = undefined;
+      event(state, 'Interaction target is no longer available.', 'rejected', e.owner as PlayerId);
+      return;
+    }
+    if (e.task === 'claim' && target.owner === e.owner) {
+      e.task = 'idle';
+      e.targetId = undefined;
+      return;
+    }
+    if (e.task === 'revive' && target.incapacitatedAt === undefined) {
+      e.task = 'idle';
+      e.targetId = undefined;
+      return;
+    }
+    if (e.task === 'collect') {
+      const guard = nearest(state, e, (t) => t.guardOf === target.id && t.hp > 0);
+      if (guard) {
+        e.task = 'attack';
+        e.targetId = guard.id;
+        e.path = undefined;
+        return;
+      }
+    }
+    const point = perimeterPoint(target, e.id % 8, 180);
+    if (edgeDistance(e, target) > 300) {
+      moveToward(state, e, point.x, point.z);
+      return;
+    }
+    e.working = true;
+    if (e.task === 'claim') return;
+    e.interactionProgress = (e.interactionProgress ?? 0) + 1;
+    if (e.task === 'revive' && e.interactionProgress >= frontierRules.reviveTicks) {
+      recoverExplorer(state, target);
+      e.task = 'idle';
+      e.targetId = undefined;
+      e.interactionProgress = 0;
+    } else if (e.task === 'collect' && e.interactionProgress >= frontierRules.treasureWorkTicks && p) {
+      const definition = treasureById.get(target.treasureId ?? '');
+      if (definition && target.amount > 0) {
+        for (const kind of Object.keys(definition.reward) as ResourceKind[])
+          p.resources[kind] += definition.reward[kind];
+        p.renown += definition.renown;
+        p.stats.treasures++;
+        target.amount = 0;
+        target.hp = 0;
+        target.deathTick = state.tick;
+        event(
+          state,
+          `${definition.name} recovered: resources and ${definition.renown / 1000} Renown.`,
+          'treasure',
+          p.id,
+        );
+      }
+      e.task = 'idle';
+      e.targetId = undefined;
+      e.treasureTargetId = undefined;
+      e.interactionProgress = 0;
+    }
+    return;
+  }
+
   if (e.kind === 'worker' && e.beforeFlee && state.tick >= (e.fleeUntil ?? 0)) {
     const threat = state.entities.some(
       (t) =>
         t.hp > 0 &&
-        t.owner > 0 &&
+        (t.owner > 0 || t.guardOf !== undefined) &&
         t.owner !== e.owner &&
         t.damage > 0 &&
         dist(e, t) < 8 * 256 &&
@@ -1552,7 +1949,7 @@ function updateUnit(state: MatchState, e: Entity) {
       state,
       e,
       (t) =>
-        t.owner !== 0 &&
+        (t.owner !== 0 || t.guardOf !== undefined) &&
         t.owner !== e.owner &&
         t.category === 'unit' &&
         canSee(state, e.owner as PlayerId, t) &&
@@ -1697,8 +2094,12 @@ function updateUnit(state: MatchState, e: Entity) {
     }
     if (!approachWork(state, e, target)) return;
     e.working = true;
+    const gatherProgress =
+      (e.gatherRemainder ?? 0) +
+      12 * (councilRate(p?.modifiers ?? [], 'gather') + (p ? marketAreaRate(state, p.id, e) : 10000) - 10000);
+    e.gatherRemainder = gatherProgress % 10000;
     const kind = resourceKind(target),
-      rate = Math.trunc((12 * councilRate(p?.modifiers ?? [], 'gather')) / 10000),
+      rate = Math.trunc(gatherProgress / 10000),
       capacity = Math.trunc((1000 * councilRate(p?.modifiers ?? [], 'carry')) / 10000),
       take = Math.max(
         0,
@@ -1747,7 +2148,7 @@ function updateUnit(state: MatchState, e: Entity) {
       e.task = 'idle';
       return;
     }
-    if (!canSee(state, e.owner as PlayerId, target)) {
+    if (e.owner && !canSee(state, e.owner as PlayerId, target)) {
       e.task = e.lastTargetPosition ? 'move' : 'idle';
       e.destX = e.lastTargetPosition?.x;
       e.destZ = e.lastTargetPosition?.z;
@@ -1845,6 +2246,23 @@ function damage(state: MatchState, source: Entity | undefined, target: Entity, a
     target.task = 'move';
     target.path = undefined;
     target.pathGoal = undefined;
+  }
+  if (target.hp === 0 && target.kind === 'explorer') {
+    target.incapacitatedAt = state.tick;
+    target.recoveryProgress = 0;
+    target.deathTick = state.tick;
+    target.task = 'dead';
+    target.orders = [];
+    target.directive = undefined;
+    target.treasureTargetId = undefined;
+    target.attackAt = undefined;
+    event(
+      state,
+      'Explorer incapacitated. Send an ally, return for Coin, or recover near a safe hall.',
+      'explorer-down',
+      target.owner as PlayerId,
+    );
+    return;
   }
   if (target.hp === 0) {
     target.task = 'dead';
@@ -2042,7 +2460,9 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
   const mine = state.entities.filter((e) => e.owner === owner && e.hp > 0),
     workers = mine.filter((e) => e.kind === 'worker'),
     army = mine.filter((e) => e.category === 'unit' && !['worker', 'explorer'].includes(e.kind));
-  const seen = state.entities.filter((e) => e.owner !== 0 && e.owner !== owner && e.hp > 0 && canSee(state, owner, e)),
+  const seen = state.entities.filter(
+      (e) => e.owner !== 0 && e.owner !== owner && !e.tradeSite && e.hp > 0 && canSee(state, owner, e),
+    ),
     hall = mine.find((e) => e.kind === 'hall'),
     barracks = mine.find((e) => e.kind === 'barracks');
   const assigned: Record<string, number> = {provisions: 0, timber: 0, coin: 0, metal: 0};
@@ -2075,11 +2495,29 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
       (p.resources[a] + assigned[a] * 7000) / (a === 'provisions' ? 3 : a === 'timber' ? 2 : 1) -
       (p.resources[b] + assigned[b] * 7000) / (b === 'provisions' ? 3 : b === 'timber' ? 2 : 1),
   )[0];
+  for (const site of mine.filter((e) => e.tradeSite && e.siteIncome !== resourceFocus))
+    issued.push({...base, sequence: next(), type: 'site-income', siteId: site.id, resource: resourceFocus});
+  const downedScout = state.entities.find((e) => e.owner === owner && e.incapacitatedAt !== undefined);
+  if (downedScout && hall?.progress === 10000 && p.resources.coin >= frontierRules.recallCoin)
+    issued.push({...base, sequence: next(), type: 'recall-explorer', entityId: downedScout.id});
   const workerGoal = Math.max(12, Math.min(18, Math.ceil(p.populationCap * 0.2)));
   if (hall && workers.length < workerGoal && hall.queue.length < 1 && canPay(p, unitById.get('worker')!.cost))
     issued.push({...base, sequence: next(), type: 'train', buildingId: hall.id, unitId: 'worker'});
   const scout = mine.find((e) => e.kind === 'explorer');
-  if (scout && scout.task === 'idle') {
+  if (scout?.task === 'idle') {
+    const treasure = nearest(state, scout, (t) => t.category === 'treasure' && t.hp > 0 && canSee(state, owner, t));
+    const site = nearest(
+      state,
+      scout,
+      (t) => !!t.tradeSite && t.owner !== owner && t.hp > 0 && canSee(state, owner, t),
+    );
+    if (treasure)
+      issued.push({...base, sequence: next(), type: 'collect-treasure', entityIds: [scout.id], targetId: treasure.id});
+    else if (site)
+      issued.push({...base, sequence: next(), type: 'claim-site', entityIds: [scout.id], targetId: site.id});
+  }
+
+  if (scout && scout.task === 'idle' && !issued.some((c) => 'entityIds' in c && c.entityIds.includes(scout.id))) {
     const w = state.map.size,
       route = [
         [0.5, 0.5],
@@ -2332,7 +2770,7 @@ function updateDispatches(state: MatchState, p: PlayerState) {
       0,
     );
     const livePopulation = state.entities
-      .filter((e) => e.owner === p.id && e.hp > 0 && e.category === 'unit')
+      .filter((e) => e.owner === p.id && (e.hp > 0 || e.incapacitatedAt !== undefined) && e.category === 'unit')
       .reduce((total, e) => total + e.population, 0);
     if (!sites.length) reason = 'Waiting for a completed central hall or fort.';
     else if (
@@ -2500,6 +2938,7 @@ function updateAnimals(state: MatchState) {
     if (e.category === 'resource' && e.amount <= 0) return false;
     if (e.category === 'animal' && (e.amount <= 0 || (e.hp <= 0 && state.tick - (e.deathTick ?? 0) > 1800)))
       return false;
+    if (e.incapacitatedAt !== undefined) return true;
     return !(e.hp <= 0 && e.category !== 'animal' && state.tick - (e.deathTick ?? 0) > 140);
   });
 }
@@ -2540,6 +2979,7 @@ export function step(state: MatchState, commands: Command[]) {
     else if (e.category === 'building') updateBuildings(state, e);
   }
   updateProjectiles(state);
+  updateFrontier(state);
   passiveSystems(state);
   updateAnimals(state);
   if (state.tick % 5 === 0) updateVision(state);

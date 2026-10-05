@@ -71,6 +71,8 @@ test('unfinished production rejects training, resumes building, then honors rall
   const s = createMatch({...config, aiCount: 0}),
     worker = s.entities.find((e) => e.owner === 1 && e.kind === 'worker')!,
     hall = s.entities.find((e) => e.owner === 1 && e.kind === 'hall')!;
+  // Isolate construction from the newly generated treasure-guard encounters.
+  s.entities = s.entities.filter((e) => !e.guardOf);
   s.players[0].resources.timber = 100000;
   let spot = {x: hall.x, z: hall.z + 25 * 256};
   for (let dx = -30; dx <= 30; dx += 8)

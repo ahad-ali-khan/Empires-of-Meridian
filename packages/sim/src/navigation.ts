@@ -66,6 +66,34 @@ function navigation(state: MatchState, owner = 0) {
   variants.set(owner, cached);
   return cached;
 }
+// Connected ground is computed once per objective search instead of running
+// an A* search for every rejected placement candidate. Four-way adjacency
+// preserves the navigation rule against cutting diagonally through corners.
+export function reachableGround(state: MatchState, starts: {x: number; z: number}[]) {
+  const {grid, n} = navigation(state);
+  const cells = new Uint8Array(grid.length);
+  const queue = new Int32Array(grid.length);
+  const origins = starts.map((p) => nearestPassable(state, p.x, p.z));
+  const first = origins[0];
+  if (!first) return {cells, n};
+  const start = Math.floor(first[1] / CELL) * n + Math.floor(first[0] / CELL);
+  let head = 0,
+    tail = 1;
+  queue[0] = start;
+  cells[start] = 1;
+  while (head < tail) {
+    const id = queue[head++],
+      x = id % n,
+      z = Math.floor(id / n);
+    for (const next of [x > 0 ? id - 1 : -1, x < n - 1 ? id + 1 : -1, z > 0 ? id - n : -1, z < n - 1 ? id + n : -1]) {
+      if (next < 0 || grid[next] || cells[next]) continue;
+      cells[next] = 1;
+      queue[tail++] = next;
+    }
+  }
+  if (origins.some((p) => !p || !cells[Math.floor(p[1] / CELL) * n + Math.floor(p[0] / CELL)])) cells.fill(0);
+  return {cells, n};
+}
 export function blocked(state: MatchState, x: number, z: number, owner = 0) {
   if (!landAt(x, z, state.map.size, state.map.seed)) return true;
   const {grid, n} = navigation(state, owner);
@@ -137,7 +165,9 @@ export function findPath(state: MatchState, e: Entity, x: number, z: number): [n
     if (e.kind === 'worker') {
       const steps = Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(bz - az)) / 100);
       for (let i = 1; i <= steps; i++)
-        if (trafficBlocked(state, e, Math.trunc(ax + ((bx - ax) * i) / steps), Math.trunc(az + ((bz - az) * i) / steps)))
+        if (
+          trafficBlocked(state, e, Math.trunc(ax + ((bx - ax) * i) / steps), Math.trunc(az + ((bz - az) * i) / steps))
+        )
           return false;
     }
     return true;

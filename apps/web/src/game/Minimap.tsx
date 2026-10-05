@@ -49,7 +49,7 @@ export function Minimap({
           }
         }
       for (const e of snapshot.entities) {
-        if (e.hp <= 0) continue;
+        if (e.hp <= 0 && e.incapacitatedAt === undefined) continue;
         if (filter === 'military' && (e.category === 'resource' || e.category === 'animal' || e.kind === 'worker'))
           continue;
         if (filter === 'economy' && e.category === 'unit' && e.kind !== 'worker') continue;
@@ -70,7 +70,21 @@ export function Minimap({
                     : '#e2c798';
         ctx.globalAlpha = e.remembered ? 0.6 : 1;
         const r = e.category === 'building' ? 4 : e.category === 'unit' ? 2.5 : 1.8;
-        ctx.fillRect(x - r / 2, z - r / 2, r, r);
+        if (e.tradeSite) {
+          ctx.beginPath();
+          ctx.moveTo(x, z - 4);
+          ctx.lineTo(x + 4, z);
+          ctx.lineTo(x, z + 4);
+          ctx.lineTo(x - 4, z);
+          ctx.closePath();
+          ctx.fill();
+        } else if (e.incapacitatedAt !== undefined) {
+          ctx.fillRect(x - 3, z - 1, 6, 2);
+          ctx.fillRect(x - 1, z - 3, 2, 6);
+        } else {
+          const marker = e.category === 'treasure' ? 4 : r;
+          ctx.fillRect(x - marker / 2, z - marker / 2, marker, marker);
+        }
       }
       ctx.globalAlpha = 1;
       const points = viewport();

@@ -10,6 +10,8 @@ import {
   advancements,
   technologies,
   supportAbilities,
+  frontierRules,
+  treasureDefinitions,
   unitById,
 } from '../packages/content/src/index.ts';
 const rows = (items: {id: string; name: string; age: number}[]) =>
@@ -67,6 +69,29 @@ Right-click selects a contextual order. Hold Shift to append rather than replace
 - Escape cancels targeting; WASD continues to control the camera. Selection shows the active order and pending order list.
 
 ${supportAbilities.map((a) => `- ${unitById.get(a.unitId)?.name ?? a.unitId}: ${a.description} Range ${a.range / 256} world units; interval ${a.cooldown / 20}s.`).join('\n')}
+
+## Trade and frontier objectives
+
+- Completed markets buy ${frontierRules.exchangeLot / 100} Provisions, Timber or Metal for ${frontierRules.buyCoin / 100} Coin; selling the same lot returns ${frontierRules.sellCoin / 100} Coin. Invalid exchanges never spend resources.
+- Markets improve nearby gathering by ${(frontierRules.marketRate - 10000) / 100}% within ${frontierRules.marketRadius / 256} world units. Fractional work is retained rather than rounded away each tick.
+- Right-click a neutral or opposing trade site with units to claim it at its boundary. One unit takes ${frontierRules.siteCaptureTicks / 20}s; up to three contributors accelerate capture. Opposing nearby units contest capture and pause payouts.
+- Captured sites pay ${frontierRules.siteIncome / 100} of the selected resource every ${frontierRules.siteIncomeTicks / 20}s. Nearby completed markets, player-built trade depots and commerce council/research bonuses add to this rate; identical structures do not stack. The selection panel shows the actual current payout.
+- Right-click treasures with an explorer. Living linked guards must be defeated before the ${frontierRules.treasureWorkTicks / 20}s collection completes. Rewards are delivered once.
+- Explorers become incapacitated at zero health and retain their population reservation. A living ally can approach and rescue them in ${frontierRules.reviveTicks / 20}s. Unthreatened territory near a completed hall or fort permits ${frontierRules.safeRecoveryTicks / 20}s recovery. Paid return costs ${frontierRules.recallCoin / 100} Coin and requires a completed hall and a clear spawn position. All recoveries restore half health.
+
+| Treasure | Guards | Resources | Renown |
+| --- | ---: | --- | ---: |
+${treasureDefinitions
+  .map(
+    (t) =>
+      `| ${t.name} | ${t.guards} | ${Object.entries(t.reward)
+        .filter(([, n]) => n > 0)
+        .map(([k, n]) => `${n / 100} ${k}`)
+        .join(' · ')} | ${t.renown / 1000} |`,
+  )
+  .join('\n')}
+
+Neutral sites and caches are generated with footprint and reachability checks. Static fog memory retains last-observed sites and treasures; hidden changes are revealed only when revisited. Site ownership, selected income, disputes, recovery and partial interaction work persist in saves. Moving trade convoys, neutral alliance contracts and trade-dominance victory are future work.
 
 ## Research and production
 

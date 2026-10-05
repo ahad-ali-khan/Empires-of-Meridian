@@ -58,7 +58,7 @@ export type Command =
       tick: number;
       playerId: PlayerId;
       sequence: number;
-      type: 'gather' | 'attack' | 'guard' | 'heal';
+      type: 'gather' | 'attack' | 'guard' | 'heal' | 'collect-treasure' | 'claim-site' | 'revive';
       queued?: boolean;
       entityIds: number[];
       targetId: number;
@@ -101,6 +101,26 @@ export type Command =
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'dispatch'; dispatchId: string}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'cancel-dispatch'; dispatchId: string}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'stance'; entityIds: number[]; stance: Stance}
+  | {
+      v: 1;
+      tick: number;
+      playerId: PlayerId;
+      sequence: number;
+      type: 'exchange';
+      buildingId: number;
+      resource: Exclude<ResourceKind, 'coin'>;
+      direction: 'buy' | 'sell';
+    }
+  | {
+      v: 1;
+      tick: number;
+      playerId: PlayerId;
+      sequence: number;
+      type: 'site-income';
+      siteId: number;
+      resource: ResourceKind;
+    }
+  | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'recall-explorer'; entityId: number}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'resign'};
 
 export interface MatchConfig {

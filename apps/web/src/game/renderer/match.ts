@@ -621,35 +621,41 @@ export class MatchRenderer {
         worker = selected.some((x) => x.kind === 'worker');
       const type =
         entity && selected.length
-          ? entity.owner > 1 && entity.category !== 'animal'
+          ? (entity.owner > 1 || entity.guardOf !== undefined) && entity.category !== 'animal'
             ? 'attack'
-            : entity.category === 'animal'
-              ? worker
-                ? entity.hp > 0
-                  ? 'hunt'
-                  : 'process'
-                : selected.some((e) => e.damage > 0)
-                  ? 'attack'
-                  : undefined
-              : worker
-                ? entity.kind === 'timber'
-                  ? 'chop'
-                  : entity.kind === 'fish'
-                    ? 'fish'
-                    : entity.kind === 'farm'
-                      ? 'farm'
-                      : entity.category === 'resource'
-                        ? entity.kind === 'coin' || entity.kind === 'metal'
-                          ? 'mine'
-                          : 'gather'
-                        : entity.category === 'building' && entity.owner === 1
-                          ? entity.progress < 10000
-                            ? 'build'
-                            : ['hall', 'fort'].includes(entity.kind)
-                              ? 'garrison'
-                              : undefined
-                          : undefined
-                : undefined
+            : entity.tradeSite
+              ? 'gather'
+              : entity.category === 'treasure'
+                ? 'gather'
+                : entity.incapacitatedAt !== undefined
+                  ? 'gather'
+                  : entity.category === 'animal'
+                    ? worker
+                      ? entity.hp > 0
+                        ? 'hunt'
+                        : 'process'
+                      : selected.some((e) => e.damage > 0)
+                        ? 'attack'
+                        : undefined
+                    : worker
+                      ? entity.kind === 'timber'
+                        ? 'chop'
+                        : entity.kind === 'fish'
+                          ? 'fish'
+                          : entity.kind === 'farm'
+                            ? 'farm'
+                            : entity.category === 'resource'
+                              ? entity.kind === 'coin' || entity.kind === 'metal'
+                                ? 'mine'
+                                : 'gather'
+                              : entity.category === 'building' && entity.owner === 1
+                                ? entity.progress < 10000
+                                  ? 'build'
+                                  : ['hall', 'fort'].includes(entity.kind)
+                                    ? 'garrison'
+                                    : undefined
+                                : undefined
+                      : undefined
           : undefined;
       this.renderer.domElement.style.cursor = this.ordering
         ? 'crosshair'
@@ -951,9 +957,10 @@ export class MatchRenderer {
     const byId = new Map(snapshot.entities.map((e) => [e.id, e]));
     const live = new Set(snapshot.entities.map((e) => e.id));
     for (const e of snapshot.entities) {
-      const age = Math.min(3, snapshot.players[Math.max(0, e.owner - 1)]?.age ?? 1);
+      const age = e.tradeSite ? 2 : Math.min(3, snapshot.players[Math.max(0, e.owner - 1)]?.age ?? 1);
       const stateKey = [
         e.model,
+        e.incapacitatedAt !== undefined ? 'incapacitated' : 'active',
         age,
         e.owner,
         Math.floor(e.progress / 2500),
@@ -1195,15 +1202,25 @@ export class MatchRenderer {
                           : 'gather'
                 : e.task === 'build' && e.category === 'unit'
                   ? 'build'
-                  : e.task === 'heal'
+                  : e.task === 'revive'
                     ? e.working
                       ? 'heal'
                       : 'idle'
-                    : e.task === 'attack'
-                      ? 'attack'
-                      : e.category === 'animal'
-                        ? 'graze'
-                        : 'idle';
+                    : e.task === 'collect'
+                      ? e.working
+                        ? 'gather'
+                        : 'idle'
+                      : e.task === 'claim'
+                        ? 'idle'
+                        : e.task === 'heal'
+                          ? e.working
+                            ? 'heal'
+                            : 'idle'
+                          : e.task === 'attack'
+                            ? 'attack'
+                            : e.category === 'animal'
+                              ? 'graze'
+                              : 'idle';
       if (v.clip !== clip) {
         v.clip = clip;
         v.phase = this.time;

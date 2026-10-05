@@ -28,6 +28,7 @@ export function visibleTo(state: MatchState, owner: PlayerId, target: {x: number
 }
 export function present(state: MatchState, e: Entity) {
   if (e.garrisonedIn) return false;
+  if (e.incapacitatedAt !== undefined) return true;
   if (e.category === 'resource')
     return e.amount > 0 || (e.kind === 'timber' && e.stumpSince !== undefined && state.tick - e.stumpSince < 600);
   if (e.category === 'animal') return e.amount > 0 && (e.hp > 0 || state.tick - (e.deathTick ?? 0) < 1800);
@@ -57,7 +58,10 @@ export function updateVision(state: MatchState) {
       }
     const memory = state.knowledge[owner - 1];
     for (const e of state.entities) {
-      if ((e.category === 'building' || e.category === 'resource') && visibleTo(state, owner, e)) {
+      if (
+        (e.category === 'building' || e.category === 'resource' || e.category === 'treasure') &&
+        visibleTo(state, owner, e)
+      ) {
         if (present(state, e) && e.hp > 0) memory[e.id] = {...structuredClone(e), remembered: true, queue: []};
         else delete memory[e.id];
       }

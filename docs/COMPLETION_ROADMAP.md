@@ -38,8 +38,8 @@ Full milestone gates in `data.md` and the accepted Milestone 1 plan remain autho
 
 - Contextual commands: owner-private Shift queues, replacement/Stop rules, attack-move with bounded pursuit and route resumption, two-point patrol, friendly guard, data-driven medic treatment, runtime hand poses, active/pending order HUD, targeting cursor and buttons, accepted/rejected feedback, group destination reservation, interrupted-worker recovery and bounded movement failure. Simulation, save/replay and live Chromium interaction evidence is recorded in `PROJECT_STATE.md`.
 
-## Next increment — trade, treasures and neutral objectives
+## Delivered increment — frontier economy and explorer objectives
 
-Implement deliberate resource exchange and trade income, explorer treasure interactions and recovery, contested neutral objectives and inspectable outcomes. Further specialized unit abilities and queued blueprint placement remain part of offline rule completion. Reuse authoritative costs/ticks, legal visibility and save/replay invariants. Offline full-match, AI, cross-browser and hardware certification still precede online work.
+Implemented fixed-lot market buy/sell, market-area gathering bonuses, selectable trade-site payouts, contested timed capture and hostile recapture, guarded resource/Renown caches, explorer incapacitation and three recovery paths, static fog memory, minimap/HUD controls and persistent partial work. Validated content owns all costs and durations. Moving convoys, neutral alliance contracts, additional treasure reward types and trade-dominance victory remain open. Specialized unit abilities and queued blueprint placement are the next offline increment, followed by naval rules. Reuse authoritative costs/ticks, legal visibility and save/replay invariants. Offline full-match, AI, cross-browser and hardware certification still precede online work.
 
 No networking, chat, campaigns, additional factions, or whole-game completion is claimed by these increments.

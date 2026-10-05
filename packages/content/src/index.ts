@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ResourceKind, Resources} from '../../protocol/src/index';
 
-export const CONTENT_VERSION = 7;
+export const CONTENT_VERSION = 8;
 const bundle = z.object({
   provisions: z.number().int().nonnegative(),
   timber: z.number().int().nonnegative(),
@@ -856,10 +856,10 @@ export const councilModifiers = z.record(z.string(), councilModifierSchema).pars
   'research-drills': {description: 'Unit training progresses 25% faster.', production: 12500},
   'research-arms': {description: 'Military units deal 10% more damage.', military: 11000},
   'research-masonry': {description: 'Buildings take 15% less damage.', buildingDamage: 8500},
-  'research-commerce': {description: 'Markets produce 20% more Coin.', market: 12000},
+  'research-commerce': {description: 'Market Coin and trade-site income increase by 20%.', market: 12000},
   gather: {description: 'Workers gather 25% faster.', gather: 12500},
   military: {description: 'Military units deal 10% more damage.', military: 11000},
-  market: {description: 'Markets produce 20% more Coin.', market: 12000},
+  market: {description: 'Market Coin and trade-site income increase by 20%.', market: 12000},
   production: {description: 'Unit training progresses 25% faster.', production: 12500},
   defense: {description: 'Buildings take 15% less damage.', buildingDamage: 8500},
   'industrial-production': {
@@ -1143,3 +1143,71 @@ export const supportAbilities = z
     },
   ]);
 export const supportByUnit = new Map(supportAbilities.map((a) => [a.unitId, a]));
+
+export const frontierRules = z
+  .object({
+    exchangeLot: z.number().int().positive(),
+    buyCoin: z.number().int().positive(),
+    sellCoin: z.number().int().positive(),
+    siteCaptureTicks: z.number().int().positive(),
+    siteRadius: z.number().int().positive(),
+    siteIncomeTicks: z.number().int().positive(),
+    siteIncome: z.number().int().positive(),
+    marketRadius: z.number().int().positive(),
+    marketRate: z.number().int().min(10000),
+    depotRate: z.number().int().min(10000),
+    treasureWorkTicks: z.number().int().positive(),
+    reviveTicks: z.number().int().positive(),
+    safeRecoveryTicks: z.number().int().positive(),
+    recallCoin: z.number().int().positive(),
+  })
+  .parse({
+    exchangeLot: 10000,
+    buyCoin: 13000,
+    sellCoin: 8000,
+    siteCaptureTicks: 200,
+    siteRadius: 5 * 256,
+    siteIncomeTicks: 200,
+    siteIncome: 2000,
+    marketRadius: 20 * 256,
+    marketRate: 12000,
+    depotRate: 12000,
+    treasureWorkTicks: 60,
+    reviveTicks: 100,
+    safeRecoveryTicks: 600,
+    recallCoin: 10000,
+  });
+export const treasureDefinitions = z
+  .array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      reward: bundle,
+      renown: z.number().int().nonnegative(),
+      guards: z.number().int().min(0).max(3),
+    }),
+  )
+  .parse([
+    {
+      id: 'pioneer-cache',
+      name: 'Pioneer Cache',
+      reward: {provisions: 8000, timber: 6000, coin: 0, metal: 0},
+      renown: 1000,
+      guards: 0,
+    },
+    {
+      id: 'frontier-paychest',
+      name: 'Frontier Paychest',
+      reward: {provisions: 0, timber: 0, coin: 10000, metal: 3000},
+      renown: 2000,
+      guards: 2,
+    },
+    {
+      id: 'survey-folio',
+      name: 'Survey Folio',
+      reward: {provisions: 5000, timber: 0, coin: 0, metal: 0},
+      renown: 5000,
+      guards: 1,
+    },
+  ]);
+export const treasureById = new Map(treasureDefinitions.map((t) => [t.id, t]));

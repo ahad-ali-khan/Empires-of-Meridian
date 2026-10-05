@@ -1,9 +1,16 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './match.css';
 import type {Command, Difficulty, MatchConfig, PlayerId, WorkerResponse} from '../../../../packages/protocol/src/index';
-import {placementReason, evaluatedAttackDamage, type MatchSnapshot} from '../../../../packages/sim/src/index';
+import {
+  placementReason,
+  evaluatedAttackDamage,
+  sitePayout,
+  type MatchSnapshot,
+} from '../../../../packages/sim/src/index';
 import {wallSpans, wallPlacementReason} from '../../../../packages/sim/src/walls';
 import {
+  frontierRules,
+  treasureById,
   technologies,
   productionName,
   buildings,
@@ -370,6 +377,36 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       setMessage('Healing ordered.');
       return;
     }
+    if (target?.incapacitatedAt !== undefined && target.owner === 1) {
+      sendRef.current({
+        type: 'revive',
+        entityIds: mobile.filter((e) => e.category === 'unit').map((e) => e.id),
+        targetId: target.id,
+        queued,
+      });
+      setMessage('Explorer recovery ordered.');
+      return;
+    }
+    if (target?.category === 'treasure' && !target.remembered) {
+      const explorers = mobile.filter((e) => e.kind === 'explorer');
+      if (!explorers.length) {
+        setMessage('Select an explorer to recover this treasure.');
+        return;
+      }
+      sendRef.current({type: 'collect-treasure', entityIds: explorers.map((e) => e.id), targetId: target.id, queued});
+      engine.current?.mark(x, z, true);
+      return;
+    }
+    if (target?.tradeSite && target.owner !== 1 && !target.remembered) {
+      sendRef.current({
+        type: 'claim-site',
+        entityIds: mobile.filter((e) => e.category === 'unit').map((e) => e.id),
+        targetId: target.id,
+        queued,
+      });
+      engine.current?.mark(x, z, true);
+      return;
+    }
     if (target?.owner === 1 && target.category === 'building') {
       if (target.progress < 10000 || (target.hp < target.maxHp && workers.length)) {
         sendRef.current({type: 'resume-build', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
@@ -395,7 +432,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       }
       return;
     }
-    if (target && target.owner > 1 && !target.remembered) {
+    if (target && (target.owner > 1 || target.guardOf !== undefined) && !target.remembered) {
       sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id, queued});
       playVoice('enemy_sighted', 0.58);
       setMessage('Attack order issued.');
@@ -752,6 +789,47 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                     Carrying {Math.ceil(n / 100)} {kind}
                   </small>
                 ))}
+              {one.incapacitatedAt !== undefined && (
+                <small>
+                  Incapacitated · safe recovery{' '}
+                  {Math.floor(((one.recoveryProgress ?? 0) * 100) / frontierRules.safeRecoveryTicks)}% · send a living
+                  ally or return for Coin.
+                </small>
+              )}
+              {one.treasureId && (
+                <small>
+                  {treasureById.get(one.treasureId)?.name} · {treasureById.get(one.treasureId)?.guards} guards ·{' '}
+                  {Object.entries(treasureById.get(one.treasureId)?.reward ?? {})
+                    .filter(([, n]) => n > 0)
+                    .map(([k, n]) => `${n / 100} ${k}`)
+                    .join(' · ')}{' '}
+                  · {(treasureById.get(one.treasureId)?.renown ?? 0) / 1000} Renown. Right-click with an explorer.
+                </small>
+              )}
+              {one.kind === 'market' && (
+                <small>
+                  Completed markets improve gathering and captured trade income by{' '}
+                  {(frontierRules.marketRate - 10000) / 100}% within {frontierRules.marketRadius / 256} world units.
+                  Nearby markets do not stack. Buy and sell resources below.
+                </small>
+              )}
+              {one.kind === 'tradePost' && !one.tradeSite && (
+                <small>
+                  A completed trade depot adds {(frontierRules.depotRate - 10000) / 100}% to captured-site income within{' '}
+                  {frontierRules.marketRadius / 256} world units. Nearby depots do not stack.
+                </small>
+              )}
+              {one.tradeSite && (
+                <small>
+                  Trade route site ·{' '}
+                  {one.captureContested ? 'Contested' : one.owner ? `Player ${one.owner} controls` : 'Neutral'} ·
+                  capture {Math.floor(((one.captureProgress ?? 0) * 100) / frontierRules.siteCaptureTicks)}% ·{' '}
+                  {(one.owner === 1 ? sitePayout(snapshot!, one) : frontierRules.siteIncome) / 100}{' '}
+                  {one.siteIncome ?? 'coin'} every {frontierRules.siteIncomeTicks / 20}s
+                  {one.owner === 1 ? ' including active bonuses.' : ' before bonuses.'}
+                  Right-click with units to claim.
+                </small>
+              )}
               {one.category === 'unit' && (
                 <small>
                   Order: {one.directive?.kind ?? one.task} · {one.orders?.length ?? 0} queued · Shift-right-click to
@@ -849,6 +927,54 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                   </button>
                 );
               })}
+          {one?.owner === 1 && one.incapacitatedAt !== undefined && (
+            <button
+              disabled={
+                !p ||
+                p.resources.coin < frontierRules.recallCoin ||
+                !entities.some((e) => e.owner === 1 && e.kind === 'hall' && e.hp > 0 && e.progress === 10000)
+              }
+              onClick={() => send({type: 'recall-explorer', entityId: one.id})}
+            >
+              Return explorer<small>{frontierRules.recallCoin / 100} Coin · requires completed hall</small>
+            </button>
+          )}
+          {one?.owner === 1 &&
+            one.tradeSite &&
+            (['provisions', 'timber', 'coin', 'metal'] as const).map((resource) => (
+              <button
+                key={resource}
+                disabled={one.siteIncome === resource}
+                onClick={() => send({type: 'site-income', siteId: one.id, resource})}
+              >
+                Route income: {resource}
+                <small>{one.siteIncome === resource ? 'Selected' : 'Switch next payout'}</small>
+              </button>
+            ))}
+          {one?.owner === 1 &&
+            one.kind === 'market' &&
+            (['provisions', 'timber', 'metal'] as const).flatMap((resource) =>
+              (['buy', 'sell'] as const).map((direction) => (
+                <button
+                  key={`${resource}-${direction}`}
+                  disabled={
+                    one.progress < 10000 ||
+                    !p ||
+                    (direction === 'buy'
+                      ? p.resources.coin < frontierRules.buyCoin
+                      : p.resources[resource] < frontierRules.exchangeLot)
+                  }
+                  onClick={() => send({type: 'exchange', buildingId: one.id, resource, direction})}
+                >
+                  {direction === 'buy' ? 'Buy' : 'Sell'} {frontierRules.exchangeLot / 100} {resource}
+                  <small>
+                    {direction === 'buy'
+                      ? `Pay ${frontierRules.buyCoin / 100} Coin`
+                      : `Receive ${frontierRules.sellCoin / 100} Coin`}
+                  </small>
+                </button>
+              )),
+            )}
           {trainable.map((u) => (
             <button
               key={u.id}
@@ -932,6 +1058,25 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       </section>
       <aside className="side-actions">
         <button onClick={() => setDebug(!debug)}>Debug</button>
+        <details className="dispatch-panel">
+          <summary>Frontier economy</summary>
+          <p>
+            Trade sites discovered: {entities.filter((e) => e.tradeSite).length} · yours:{' '}
+            {entities.filter((e) => e.tradeSite && e.owner === 1).length}
+          </p>
+          <p>
+            Route income received:{' '}
+            {p
+              ? Object.entries(p.stats.tradeIncome)
+                  .map(([k, n]) => `${format(n)} ${k}`)
+                  .join(' · ')
+              : '0'}
+          </p>
+          <p>
+            Treasures recovered: {p?.stats.treasures ?? 0} · market exchanges: {p?.stats.exchanges ?? 0}
+          </p>
+          <p>Enemy structures retain their last observed state through fog. Contesting a route pauses its income.</p>
+        </details>
         {p?.advancing && (
           <div className="advancement">
             {p.advancing.waiting ??
@@ -1124,6 +1269,12 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
               <dd>{format(Object.values(p!.stats.gathered).reduce((a, b) => a + b, 0))}</dd>
               <dt>Enemy units defeated</dt>
               <dd>{p?.stats.unitsKilled}</dd>
+              <dt>Treasures recovered / sites captured</dt>
+              <dd>
+                {p?.stats.treasures} / {p?.stats.sitesCaptured}
+              </dd>
+              <dt>Trade income</dt>
+              <dd>{p ? format(Object.values(p.stats.tradeIncome).reduce((a, b) => a + b, 0)) : 0}</dd>
               <dt>Idle worker minutes</dt>
               <dd>{((p?.stats.idleWorkerTicks ?? 0) / 1200).toFixed(1)}</dd>
             </dl>
