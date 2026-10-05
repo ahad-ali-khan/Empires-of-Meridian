@@ -201,7 +201,7 @@ export function voiceForSimulationEvent(kind: string, text: string) {
   if (kind === 'victory' || value.includes('wins by conquest')) return 'victory';
   if (kind === 'build' && value.includes('completed')) return 'building_complete';
   if (kind === 'age' && value.includes('advanced')) return `age_${value.includes('4') ? 'industrial' : value.includes('3') ? 'medieval' : 'classical'}`;
-  if (kind === 'dispatch') return 'dispatch_arrived';
+  if (kind === 'dispatch' && value.includes('arrived')) return 'dispatch_arrived';
   if (kind === 'gather' && value.includes('no matching')) return 'worker_no_resource';
   return undefined;
 }

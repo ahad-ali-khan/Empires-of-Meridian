@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ResourceKind, Resources} from '../../protocol/src/index';
 
-export const CONTENT_VERSION = 3;
+export const CONTENT_VERSION = 4;
 const bundle = z.object({
   provisions: z.number().int().nonnegative(),
   timber: z.number().int().nonnegative(),
@@ -776,14 +776,67 @@ export const buildings = buildingSchema.array().parse([
 ]);
 export const buildingById = new Map(buildings.map((x) => [x.id, x]));
 export const resourceKinds: ResourceKind[] = ['provisions', 'timber', 'coin', 'metal'];
-export const dispatches = Array.from({length: 24}, (_, i) => ({
-  id: `charter-${i + 1}`,
-  name: ['Provision Convoy', 'Timber Charter', 'Coin Credit', 'Metalwrights', 'Worker Party', 'Militia Detail'][i % 6],
-  age: (i < 10 ? 1 : i < 18 ? 2 : 3) as 1 | 2 | 3,
-  tokenCost: i < 18 ? 1 : 2,
-  resource: resourceKinds[i % 4],
-  amount: 5000 + (i % 4) * 1500,
-}));
+const dispatchSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  age: z.number().int().min(1).max(4),
+  tokenCost: z.number().int().positive(),
+  departureTicks: z.number().int().positive(),
+  arrivalTicks: z.number().int().positive(),
+  resources: bundle,
+  units: z.array(z.object({unitId: z.string(), count: z.number().int().positive()})),
+});
+export type DispatchDefinition = z.infer<typeof dispatchSchema>;
+const charter = (index: number, name: string, age: number, resources: Resources, unitId?: string, count = 0) => ({
+  id: `charter-${index}`,
+  name,
+  age,
+  tokenCost: age >= 3 ? 2 : 1,
+  departureTicks: 100,
+  arrivalTicks: 400 + age * 100,
+  resources,
+  units: unitId ? [{unitId, count}] : [],
+});
+export const dispatches = dispatchSchema
+  .array()
+  .parse([
+    charter(1, 'Provision Convoy', 1, cost(15000)),
+    charter(2, 'Timber Charter', 1, cost(0, 15000)),
+    charter(3, 'Coin Credit', 1, cost(0, 0, 12000)),
+    charter(4, 'Metalwrights', 1, cost(0, 0, 0, 10000)),
+    charter(5, 'Worker Party', 1, cost(), 'worker', 2),
+    charter(6, 'Militia Detail', 1, cost(), 'militia', 3),
+    charter(7, 'Frontier Supplies', 1, cost(8000, 8000)),
+    charter(8, 'Spear Escort', 1, cost(), 'spearman', 3),
+    charter(9, 'Bow Detachment', 1, cost(), 'archer', 3),
+    charter(10, 'Surveyor Supplies', 1, cost(4000, 5000, 4000)),
+    charter(11, 'Settlement Stores', 2, cost(20000, 12000)),
+    charter(12, 'Sword Company', 2, cost(), 'swordsman', 3),
+    charter(13, 'Shield Escort', 2, cost(), 'shieldBearer', 3),
+    charter(14, 'Light Riders', 2, cost(), 'lightRider', 2),
+    charter(15, 'Mounted Reconnaissance', 2, cost(), 'mountedScout', 2),
+    charter(16, 'Ram Reinforcement', 2, cost(), 'ramWagon', 1),
+    charter(17, 'Guild Materials', 2, cost(0, 16000, 8000, 8000)),
+    charter(18, 'Settler Expedition', 2, cost(6000), 'worker', 3),
+    charter(19, 'Pike Reserve', 3, cost(), 'pikeman', 5),
+    charter(20, 'Crossbow Reserve', 3, cost(), 'crossbow', 5),
+    charter(21, 'Lancer Squadron', 3, cost(), 'cavalry', 3),
+    charter(22, 'Field Battery', 3, cost(), 'cannon', 1),
+    charter(23, 'Fortification Stores', 3, cost(0, 22000, 0, 18000)),
+    charter(24, 'League Treasury', 3, cost(10000, 0, 22000, 8000)),
+  ]);
+for (const card of dispatches) {
+  for (const delivery of card.units) {
+    const definition = unitById.get(delivery.unitId);
+    if (!definition || definition.age > card.age) throw new Error(`Invalid Dispatch unit: ${card.id}`);
+  }
+}
+export function dispatchDescription(card: DispatchDefinition) {
+  return [
+    ...resourceKinds.filter((kind) => card.resources[kind] > 0).map((kind) => `${card.resources[kind] / 100} ${kind}`),
+    ...card.units.map((delivery) => `${delivery.count} ${unitById.get(delivery.unitId)!.name}`),
+  ].join(' · ');
+}
 
 export const councilChoices = [
   {

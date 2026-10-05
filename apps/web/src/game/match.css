@@ -284,3 +284,30 @@
     bottom: 219px;
   }
 }
+
+.dispatch-panel {
+  width: 220px;
+  max-height: 42vh;
+  overflow-y: auto;
+  background: #17291ef2;
+  border: 1px solid #bfa86d88;
+  padding: 8px;
+  font-size: 11px;
+}
+.dispatch-panel summary {
+  cursor: pointer;
+  color: #efd28b;
+}
+.dispatch-panel p {
+  font-size: 10px;
+  line-height: 1.5;
+}
+.dispatch-panel button {
+  width: 100%;
+  margin-top: 6px;
+  text-align: left;
+}
+.dispatch-transit {
+  border-bottom: 1px solid #bfa86d55;
+  padding: 8px 0;
+}

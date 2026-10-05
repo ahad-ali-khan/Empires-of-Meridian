@@ -8,6 +8,7 @@ import {
   buildingById,
   unitById,
   dispatches,
+  dispatchDescription,
   units,
   sightFor,
   garrisonCapacity,
@@ -339,12 +340,12 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       }
       return;
     }
-      if (target && target.owner > 1 && !target.remembered) {
-        sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id});
-        playVoice('enemy_sighted', 0.58);
-        setMessage('Attack order issued.');
-        return;
-      }
+    if (target && target.owner > 1 && !target.remembered) {
+      sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id});
+      playVoice('enemy_sighted', 0.58);
+      setMessage('Attack order issued.');
+      return;
+    }
     sendRef.current({
       type: 'move',
       entityIds: mobile.map((e) => e.id),
@@ -546,7 +547,14 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
   ];
   useEffect(() => {
     if (config.mode !== 'tutorial') return;
-    const tutorialVoice = ['tutorial_camera', 'tutorial_gather', 'tutorial_build', 'tutorial_train', 'tutorial_fight', 'tutorial_dispatch'][tutorial];
+    const tutorialVoice = [
+      'tutorial_camera',
+      'tutorial_gather',
+      'tutorial_build',
+      'tutorial_train',
+      'tutorial_fight',
+      'tutorial_dispatch',
+    ][tutorial];
     if (tutorialVoice) playVoice(tutorialVoice, 0.65);
   }, [config.mode, tutorial]);
   useEffect(() => {
@@ -813,14 +821,53 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
             Industrial Age<small>900 provisions · 600 timber · 500 coin · 400 metal</small>
           </button>
         )}
-        {dispatches
-          .filter((d) => d.age <= (p?.age ?? 1))
-          .slice(0, 4)
-          .map((d) => (
-            <button key={d.id} disabled={!p?.tokens} onClick={() => send({type: 'dispatch', dispatchId: d.id})}>
-              {d.name} · {d.tokenCost}
-            </button>
-          ))}
+        <details className="dispatch-panel">
+          <summary>Dispatch charter · {p?.tokens ?? 0} tokens</summary>
+          <p>One use per card. Cancel within 5s of ordering. Deliveries wait for a hall/fort and population space.</p>
+          {p?.pendingDispatches.map((pending) => {
+            const card = dispatches.find((d) => d.id === pending.id)!;
+            const departing = (snapshot?.tick ?? 0) < pending.departureTick;
+            return (
+              <div className="dispatch-transit" key={pending.id}>
+                <strong>{card.name}</strong>
+                <small>
+                  {pending.waiting ??
+                    `${departing ? 'Departs' : 'Arrives'} in ${Math.max(0, Math.ceil(((departing ? pending.departureTick : pending.arrivalTick) - (snapshot?.tick ?? 0)) / 20))}s`}
+                </small>
+                {departing && (
+                  <button onClick={() => send({type: 'cancel-dispatch', dispatchId: pending.id})}>
+                    Cancel · refund {card.tokenCost} tokens
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {dispatches.map((d) => {
+            const sent = p?.usedDispatches.includes(d.id);
+            const pending = p?.pendingDispatches.some((q) => q.id === d.id);
+            const reason = sent
+              ? 'Delivered · once per match'
+              : pending
+                ? 'In transit'
+                : d.age > (p?.age ?? 1)
+                  ? `Requires ${ages[d.age - 1]} Age`
+                  : (p?.tokens ?? 0) < d.tokenCost
+                    ? 'Not enough Dispatch tokens'
+                    : '';
+            return (
+              <button
+                key={d.id}
+                disabled={Boolean(reason)}
+                title={reason || dispatchDescription(d)}
+                onClick={() => send({type: 'dispatch', dispatchId: d.id})}
+              >
+                {d.name} · {d.tokenCost} tokens
+                <small>{dispatchDescription(d)}</small>
+                <small>{reason || `Arrival ${d.arrivalTicks / 20}s · cancel before departure`}</small>
+              </button>
+            );
+          })}
+        </details>
       </aside>
       {config.mode === 'tutorial' && (
         <aside className="tutorial-card">

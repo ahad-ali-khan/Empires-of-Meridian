@@ -105,6 +105,8 @@ export interface PlayerState {
   populationCap: number;
   resigned: boolean;
   modifiers: string[];
+  usedDispatches: string[];
+  pendingDispatches: {id: string; departureTick: number; arrivalTick: number; waiting?: string}[];
   stats: {
     gathered: Resources;
     unitsLost: number;
@@ -209,6 +211,8 @@ function player(id: PlayerId, populationCap: number): PlayerState {
     populationCap: Math.min(20, populationCap),
     resigned: false,
     modifiers: [],
+    usedDispatches: [],
+    pendingDispatches: [],
     stats: {gathered: emptyResources(), unitsLost: 0, unitsKilled: 0, idleWorkerTicks: 0, dispatches: 0, commands: 0},
   };
 }
@@ -814,11 +818,35 @@ function applyCommand(state: MatchState, c: Command) {
   }
   if (c.type === 'dispatch') {
     const d = dispatches.find((x) => x.id === c.dispatchId);
-    if (!d || d.age > p.age || p.tokens < d.tokenCost) return;
+    if (
+      !d ||
+      d.age > p.age ||
+      p.tokens < d.tokenCost ||
+      p.usedDispatches.includes(d.id) ||
+      p.pendingDispatches.some((q) => q.id === d.id)
+    ) {
+      event(state, 'Cannot send Dispatch: check age, tokens, and once-only availability.', 'rejected', p.id);
+      return;
+    }
     p.tokens -= d.tokenCost;
-    p.resources[d.resource] += d.amount;
-    p.stats.dispatches++;
-    event(state, `${d.name} arrived for Player ${p.id}`, 'dispatch');
+    p.pendingDispatches.push({
+      id: d.id,
+      departureTick: state.tick + d.departureTicks,
+      arrivalTick: state.tick + d.arrivalTicks,
+    });
+    event(state, `${d.name} queued — departing in ${d.departureTicks / 20}s.`, 'dispatch-queued', p.id);
+  }
+  if (c.type === 'cancel-dispatch') {
+    const index = p.pendingDispatches.findIndex((q) => q.id === c.dispatchId);
+    const pending = p.pendingDispatches[index];
+    if (!pending || state.tick >= pending.departureTick) {
+      event(state, 'Cannot cancel a departed Dispatch.', 'rejected', p.id);
+      return;
+    }
+    const card = dispatches.find((d) => d.id === pending.id)!;
+    p.tokens += card.tokenCost;
+    p.pendingDispatches.splice(index, 1);
+    event(state, `${card.name} canceled; tokens refunded.`, 'dispatch-canceled', p.id);
   }
   state.commandLog.push(structuredClone(c));
 }
@@ -1666,7 +1694,16 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
         councilId: p.age === 1 ? 'harvest-council' : p.age === 2 ? 'field-command' : 'industrial-guilds',
       });
   }
-  if (p.tokens > 0) issued.push({...base, sequence: next(), type: 'dispatch', dispatchId: 'charter-1'});
+  if (p.tokens > 0) {
+    const card = dispatches.find(
+      (d) =>
+        d.age <= p.age &&
+        d.tokenCost <= p.tokens &&
+        !p.usedDispatches.includes(d.id) &&
+        !p.pendingDispatches.some((q) => q.id === d.id),
+    );
+    if (card) issued.push({...base, sequence: next(), type: 'dispatch', dispatchId: card.id});
+  }
   // A small starting force should begin scouting before the economy has
   // snowballed. Difficulty changes patience, never combat stats or costs.
   const threshold = difficulty === 'relaxed' ? 8 : difficulty === 'standard' ? 5 : 4;
@@ -1800,8 +1837,88 @@ function aiTargetScore(
   score -= recentTargets.filter((id) => id === target.id).length * 180;
   return score;
 }
+function updateDispatches(state: MatchState, p: PlayerState) {
+  for (const pending of [...p.pendingDispatches]) {
+    if (state.tick === pending.departureTick)
+      event(state, `${dispatches.find((d) => d.id === pending.id)!.name} departed.`, 'dispatch-departed', p.id);
+    if (state.tick < pending.arrivalTick) continue;
+    const card = dispatches.find((d) => d.id === pending.id)!;
+    const sites = state.entities
+      .filter((e) => e.owner === p.id && e.hp > 0 && e.progress === 10000 && (e.kind === 'hall' || e.kind === 'fort'))
+      .sort((a, b) => a.id - b.id);
+    let reason: string | undefined;
+    const population = card.units.reduce(
+      (total, delivery) => total + unitById.get(delivery.unitId)!.population * delivery.count,
+      0,
+    );
+    const livePopulation = state.entities
+      .filter((e) => e.owner === p.id && e.hp > 0 && e.category === 'unit')
+      .reduce((total, e) => total + e.population, 0);
+    if (!sites.length) reason = 'Waiting for a completed central hall or fort.';
+    else if (livePopulation + population > p.populationCap) reason = 'Waiting for population space.';
+    const spawns: {kind: string; x: number; z: number; site: Entity}[] = [];
+    if (!reason)
+      for (const delivery of card.units)
+        for (let count = 0; count < delivery.count; count++) {
+          let spot: {x: number; z: number; site: Entity} | undefined;
+          for (const site of sites) {
+            for (let ring = 0; ring < 6 && !spot; ring++) {
+              for (const [dx, dz] of SLOT_DIRECTIONS) {
+                const radius = approachRange(site) + 450 + ring * 450;
+                const candidate = {
+                  x: site.x + Math.trunc((dx * radius) / 1024),
+                  z: site.z + Math.trunc((dz * radius) / 1024),
+                  site,
+                };
+                if (
+                  blocked(state, candidate.x, candidate.z) ||
+                  spawns.some((e) => dist(e, candidate) < 300) ||
+                  state.entities.some(
+                    (e) =>
+                      e.hp > 0 &&
+                      !e.garrisonedIn &&
+                      (e.category === 'unit' || e.category === 'animal') &&
+                      dist(e, candidate) < 300,
+                  )
+                )
+                  continue;
+                spot = candidate;
+                break;
+              }
+            }
+            if (spot) break;
+          }
+          if (!spot) {
+            reason = 'Waiting for clear ground at the arrival site.';
+            break;
+          }
+          spawns.push({...spot, kind: delivery.unitId});
+        }
+    if (reason) {
+      if (pending.waiting !== reason) event(state, `${card.name}: ${reason}`, 'dispatch-waiting', p.id);
+      pending.waiting = reason;
+      continue;
+    }
+    for (const kind of Object.keys(card.resources) as ResourceKind[]) p.resources[kind] += card.resources[kind];
+    for (const spawn of spawns) {
+      const created = unit(state, p.id, spawn.kind, spawn.x, spawn.z);
+      if (created.kind === 'worker' && created.id % 2) created.model = 'villagerFemale';
+      if (spawn.site.rally) {
+        created.task = 'move';
+        created.destX = spawn.site.rally.x;
+        created.destZ = spawn.site.rally.z;
+      }
+    }
+    p.population = livePopulation + population;
+    p.stats.dispatches++;
+    p.usedDispatches.push(card.id);
+    p.pendingDispatches.splice(p.pendingDispatches.indexOf(pending), 1);
+    event(state, `${card.name} arrived for Player ${p.id}`, 'dispatch', p.id);
+  }
+}
 function passiveSystems(state: MatchState) {
   for (const p of state.players) {
+    updateDispatches(state, p);
     if (p.advancing) {
       p.advancing.remaining--;
       if (p.advancing.remaining <= 0) {
@@ -1952,7 +2069,9 @@ export function createSnapshot(state: MatchState, viewer: PlayerId, includeCheck
   return {
     tick: state.tick,
     winner: state.winner,
-    players: structuredClone(state.players),
+    players: structuredClone(
+      state.players.map((p) => (p.id === viewer ? p : {...p, pendingDispatches: [], usedDispatches: []})),
+    ),
     entities: structuredClone(
       observedEntities(state, viewer).map((e) => ({
         ...e,

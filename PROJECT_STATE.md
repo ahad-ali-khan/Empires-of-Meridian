@@ -30,3 +30,13 @@ The repeatable headless profile (`pnpm tsx scripts/profile-sim.ts`) currently me
 Validation: `pnpm test` — 17 passing checks, including all default asset factories, 100 layout seeds, age restrictions, building proportions, damage topology, tool grips, projectile visibility and net landing. `pnpm build` passes, with Vite's existing bundle-size advisory. Native Chrome inspection confirmed the live settlement and Forge; the final damage and scale revisions still need a complete visual sweep. Chrome control was interrupted by active user interaction. A single 60 FPS HUD observation is not a hardware benchmark or a sustained performance guarantee.
 
 The September 17 section above is historical. Fixed-tick economy/combat, navigation, production, local saves and the offline match shell now have implementations under active playtest. Multiplayer and the complete Milestone 1 acceptance gates remain unfinished.
+
+## October 5 completion sequence
+
+The full game remains incomplete. `docs/COMPLETION_ROADMAP.md` records the dependency order from offline rule completion through multiplayer, social, competitive/content systems and production certification.
+
+Dispatch lifecycle increment: content version 4, 24 distinct resource/unit cards, reserved tokens, five-second pre-departure cancellation/refund, deterministic travel, once-only rules, arrival-site/population/spawn waiting, legal AI use, private charter state, and full card/timer HUD. Older content-version saves are explicitly unsupported; no migration is claimed.
+
+Fresh evidence: six Dispatch simulation regressions pass, including mid-transit save/restore final checksum parity; full unit suite 49/49 passes; ESLint and production build pass (existing bundle-size advisory). A real Chromium interaction test passes: all 24 cards, real worker delivery text, token reservation, transit display and cancellation/refund, without page errors. Headless software rendering stalled menu clicks; Metal rendering on this macOS host completed the flow in 7.1s. No full-match or milestone release gate is certified.
+
+Next three tasks: complete council modifier effects and choice UI; implement research/upgrade queues; expand reliable command coverage before offline certification and multiplayer.

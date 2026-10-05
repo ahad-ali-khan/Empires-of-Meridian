@@ -78,6 +78,7 @@ export type Command =
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'convert-gate'; buildingId: number}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'advance'; councilId: string}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'dispatch'; dispatchId: string}
+  | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'cancel-dispatch'; dispatchId: string}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'stance'; entityIds: number[]; stance: Stance}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'resign'};
 
