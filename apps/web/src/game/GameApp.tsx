@@ -214,6 +214,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     groups = useRef(new Map<string, number[]>()),
     selectedRef = useRef(new Set<number>()),
     buildMode = useRef<string | undefined>(undefined),
+    orderMode = useRef<'attack-move' | 'patrol' | 'guard' | 'heal' | undefined>(undefined),
     winnerAnnounced = useRef(false);
   const [snapshot, setSnapshot] = useState<MatchSnapshot | undefined>(undefined),
     [selected, setSelected] = useState(new Set<number>()),
@@ -223,6 +224,10 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     [debug, setDebug] = useState(false);
   const send = (command: ClientCommand) => {
     if (!snapshot || paused) return;
+    if (command.type === 'stop') {
+      orderMode.current = undefined;
+      engine.current?.setOrderMode(false);
+    }
     const full = {
       v: 1,
       tick: snapshot.tick + 1,
@@ -232,11 +237,11 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     } as Command;
     worker.current?.postMessage({type: 'commands', commands: [full]});
     const commandCue =
-      command.type === 'move' || command.type === 'rally'
+      command.type === 'move' || command.type === 'rally' || command.type === 'patrol' || command.type === 'guard'
         ? 'ui.command.move'
         : command.type === 'gather'
           ? 'ui.command.gather'
-          : command.type === 'attack'
+          : command.type === 'attack' || command.type === 'attack-move'
             ? 'ui.command.attack'
             : command.type === 'build' || command.type === 'resume-build'
               ? 'ui.command.build'
@@ -245,8 +250,14 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                 : 'ui.command.accepted';
     playAudio(commandCue);
     if (command.type === 'gather') playVoice('worker_gather', 0.58);
-    else if (command.type === 'move' || command.type === 'rally') playVoice('commander_move', 0.5);
-    else if (command.type === 'attack') playVoice('commander_attack', 0.52);
+    else if (
+      command.type === 'move' ||
+      command.type === 'rally' ||
+      command.type === 'patrol' ||
+      command.type === 'guard'
+    )
+      playVoice('commander_move', 0.5);
+    else if (command.type === 'attack' || command.type === 'attack-move') playVoice('commander_attack', 0.52);
     else if (command.type === 'build' || command.type === 'resume-build') playVoice('commander_build', 0.5);
     else if (command.type === 'advance') playVoice('commander_research', 0.58);
     else if (command.type === 'dispatch') playVoice('commander_dispatch', 0.58);
@@ -268,6 +279,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       const seen = new Set(previous?.events.map((e) => `${e.tick}:${e.kind}:${e.text}`));
       for (const e of snap.events) {
         if (seen.has(`${e.tick}:${e.kind}:${e.text}`)) continue;
+        if (e.kind === 'order' || e.kind === 'rejected') setMessage(e.text);
         const cue = audioForSimulationEvent(e.kind, e.text);
         if (cue) playAudio(cue);
         const voice = voiceForSimulationEvent(e.kind, e.text);
@@ -300,7 +312,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       w.terminate();
     };
   }, []);
-  const orderAt = (x: number, z: number, targetId?: number) => {
+  const orderAt = (x: number, z: number, targetId?: number, queued = false) => {
     const snap = snapshotRef.current;
     if (!snap) return;
     const selected = snap.entities.filter((e) => selectedRef.current.has(e.id) && e.owner === 1 && e.hp > 0),
@@ -321,39 +333,77 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       return;
     }
     if (!mobile.length) return;
+    const mode = orderMode.current;
+    if (mode) {
+      if (mode === 'guard' || mode === 'heal') {
+        if (!target || target.owner !== 1) {
+          setMessage('Choose a friendly target for this order.');
+          return;
+        }
+        sendRef.current({type: mode, entityIds: mobile.map((e) => e.id), targetId: target.id, queued});
+      } else
+        sendRef.current({
+          type: mode,
+          entityIds: mobile.map((e) => e.id),
+          x: Math.round(x * 256),
+          z: Math.round(z * 256),
+          queued,
+        });
+      orderMode.current = undefined;
+      engine.current?.setOrderMode(false);
+      engine.current?.mark(x, z);
+      setMessage(`${queued ? 'Queued ' : ''}${mode} order sent.`);
+      return;
+    }
+    if (
+      target?.owner === 1 &&
+      target.category === 'unit' &&
+      target.hp < target.maxHp &&
+      mobile.some((e) => e.kind === 'medic')
+    ) {
+      sendRef.current({
+        type: 'heal',
+        entityIds: mobile.filter((e) => e.kind === 'medic').map((e) => e.id),
+        targetId: target.id,
+        queued,
+      });
+      setMessage('Healing ordered.');
+      return;
+    }
     if (target?.owner === 1 && target.category === 'building') {
       if (target.progress < 10000 || (target.hp < target.maxHp && workers.length)) {
-        sendRef.current({type: 'resume-build', entityIds: workers.map((e) => e.id), targetId: target.id});
+        sendRef.current({type: 'resume-build', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
         setMessage(target.progress < 10000 ? 'Construction resumed.' : 'Repairs ordered.');
       } else if (workers.length && target.kind === 'farm') {
-        sendRef.current({type: 'gather', entityIds: workers.map((e) => e.id), targetId: target.id});
+        sendRef.current({type: 'gather', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
         setMessage('Farm work ordered. Each farm has two worker positions.');
       } else if (workers.length && garrisonCapacity(target.kind, snap.players[0].age) > 0) {
-        sendRef.current({type: 'garrison', entityIds: workers.map((e) => e.id), targetId: target.id});
+        sendRef.current({type: 'garrison', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
         setMessage('Villagers taking shelter.');
       } else setMessage('This building cannot shelter the selected units.');
       return;
     }
     if (target && !target.remembered && (target.category === 'resource' || target.category === 'animal')) {
       if (workers.length) {
-        sendRef.current({type: 'gather', entityIds: workers.map((e) => e.id), targetId: target.id});
+        sendRef.current({type: 'gather', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
         setMessage(target.category === 'animal' ? 'Hunt and gather food.' : 'Gather order issued.');
       }
       if (target.category === 'animal') {
         const soldiers = mobile.filter((e) => e.kind !== 'worker' && e.kind !== 'sheep');
         if (soldiers.length)
-          sendRef.current({type: 'attack', entityIds: soldiers.map((e) => e.id), targetId: target.id});
+          sendRef.current({type: 'attack', entityIds: soldiers.map((e) => e.id), targetId: target.id, queued});
       }
       return;
     }
     if (target && target.owner > 1 && !target.remembered) {
-      sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id});
+      sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id, queued});
       playVoice('enemy_sighted', 0.58);
       setMessage('Attack order issued.');
       return;
     }
     sendRef.current({
       type: 'move',
+      queued,
       entityIds: mobile.map((e) => e.id),
       x: Math.round(x * 256),
       z: Math.round(z * 256),
@@ -369,7 +419,11 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       (id, add, button) => {
         const entity = snapshotRef.current?.entities.find((e) => e.id === id);
         if (button === 2) {
-          if (entity) orderAt(entity.x / 256, entity.z / 256, id);
+          if (entity) orderAt(entity.x / 256, entity.z / 256, id, add);
+          return;
+        }
+        if (orderMode.current && entity) {
+          orderAt(entity.x / 256, entity.z / 256, id, add);
           return;
         }
         const next = add ? new Set(selectedRef.current) : new Set<number>();
@@ -382,7 +436,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         setSelected(next);
         r.setSelected(next);
       },
-      (x, z, button) => {
+      (x, z, button, queued) => {
         if (buildMode.current) {
           if (button === 2) {
             buildMode.current = undefined;
@@ -457,7 +511,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
           setMessage('Construction order issued.');
           return;
         }
-        if (button === 2 && selectedRef.current.size) orderAt(x, z);
+        if ((button === 2 || orderMode.current) && selectedRef.current.size) orderAt(x, z, undefined, queued);
         else {
           selectedRef.current = new Set();
           setSelected(new Set());
@@ -492,9 +546,17 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     const keys = (e: KeyboardEvent) => {
       if (/input|textarea|select/i.test((e.target as Element)?.tagName ?? '')) return;
       if (e.code === 'Escape') {
+        orderMode.current = undefined;
+        engine.current?.setOrderMode(false);
         buildMode.current = undefined;
         engine.current?.setPlacement();
         setMessage('Order cancelled.');
+      }
+      if (e.code === 'KeyT' || e.code === 'KeyP' || e.code === 'KeyG' || e.code === 'KeyH') {
+        orderMode.current =
+          e.code === 'KeyT' ? 'attack-move' : e.code === 'KeyP' ? 'patrol' : e.code === 'KeyG' ? 'guard' : 'heal';
+        engine.current?.setOrderMode(true);
+        setMessage(`Choose a target for ${orderMode.current}. Escape cancels; Shift queues.`);
       }
       if (e.code === 'KeyX') sendRef.current({type: 'stop', entityIds: [...selectedRef.current]});
       if (/^Digit[1-9]$/.test(e.code)) {
@@ -690,6 +752,17 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                     Carrying {Math.ceil(n / 100)} {kind}
                   </small>
                 ))}
+              {one.category === 'unit' && (
+                <small>
+                  Order: {one.directive?.kind ?? one.task} · {one.orders?.length ?? 0} queued · Shift-right-click to
+                  queue
+                </small>
+              )}
+              {one.orders?.map((order, i) => (
+                <small key={i}>
+                  {i + 1}. {order.type}
+                </small>
+              ))}
               {one.queue.length > 0 && (
                 <div className="production-list">
                   {one.queue.map((q, i) => (
@@ -808,6 +881,8 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                 key={b.id}
                 disabled={!p || Object.entries(b.cost).some(([k, n]) => p.resources[k as keyof typeof p.resources] < n)}
                 onClick={() => {
+                  orderMode.current = undefined;
+                  engine.current?.setOrderMode(false);
                   buildMode.current = b.id;
                   engine.current?.setPlacement(b.id);
                   setMessage(`Place ${b.name} on clear ground. Q / E rotates the preview.`);
@@ -824,6 +899,26 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
             ))}
           {chosen.some((e) => e.owner === 1 && e.category === 'unit') && (
             <>
+              {(['attack-move', 'patrol', 'guard', 'heal'] as const)
+                .filter((mode) => mode !== 'heal' || chosen.some((e) => e.kind === 'medic'))
+                .map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => {
+                      orderMode.current = mode;
+                      engine.current?.setOrderMode(true);
+                      setMessage(`Choose a target for ${mode}. Escape cancels; Shift queues.`);
+                    }}
+                  >
+                    {mode === 'attack-move'
+                      ? 'Attack-move [T]'
+                      : mode === 'patrol'
+                        ? 'Patrol [P]'
+                        : mode === 'guard'
+                          ? 'Guard [G]'
+                          : 'Heal [H]'}
+                  </button>
+                ))}
               <button onClick={() => send({type: 'stop', entityIds: [...selected]})}>Stop [X]</button>
               <button onClick={() => send({type: 'stance', entityIds: [...selected], stance: 'aggressive'})}>
                 Aggressive

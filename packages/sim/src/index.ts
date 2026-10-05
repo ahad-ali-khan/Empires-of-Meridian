@@ -9,6 +9,7 @@ import {
   technologies,
   technologyById,
   productionName,
+  supportByUnit,
 } from '../../content/src/index';
 import {CONTENT_VERSION} from '../../content/src/index';
 import {visibleTo, updateVision, observedEntities, FOG_CELL} from './visibility';
@@ -34,7 +35,7 @@ import {
 
 export const MAP_VERSION = 5;
 type EntityCategory = 'unit' | 'building' | 'resource' | 'projectile' | 'treasure' | 'animal';
-type Task = 'idle' | 'move' | 'gather' | 'carry' | 'build' | 'attack' | 'dead' | 'garrison';
+type Task = 'idle' | 'move' | 'gather' | 'carry' | 'build' | 'attack' | 'dead' | 'garrison' | 'heal';
 export interface QueueItem {
   id?: number;
   kind: string;
@@ -93,9 +94,23 @@ export interface Entity {
   lastWorked?: number;
   stumpSince?: number;
   beforeGarrison?: {task: Task; targetId?: number; resourceTargetId?: number};
-  beforeFlee?: {task: Task; targetId?: number; resourceTargetId?: number};
+  beforeFlee?: {task: Task; targetId?: number; resourceTargetId?: number; destX?: number; destZ?: number};
   lastTargetPosition?: {x: number; z: number};
   lastOrder?: number;
+  orders?: Command[];
+  directive?: {
+    kind: 'attack-move' | 'patrol' | 'guard';
+    x: number;
+    z: number;
+    originX: number;
+    originZ: number;
+    targetId?: number;
+    returning?: boolean;
+    chaseX?: number;
+    chaseZ?: number;
+    ignoredTarget?: number;
+    ignoreUntil?: number;
+  };
   rally?: {x: number; z: number; targetId?: number};
   garrisonedIn?: number;
   deathTick?: number;
@@ -551,7 +566,234 @@ export function placementReason(
   return '';
 }
 export const canSee = visibleTo;
-function applyCommand(state: MatchState, c: Command) {
+type UnitCommand = Extract<Command, {entityIds: number[]}> & {queued?: boolean};
+const unitOrderTypes = [
+  'move',
+  'attack-move',
+  'patrol',
+  'gather',
+  'attack',
+  'guard',
+  'heal',
+  'resume-build',
+  'garrison',
+];
+function orderReason(state: MatchState, e: Entity, c: UnitCommand) {
+  if (e.garrisonedIn) return 'Release sheltered units before ordering them.';
+  if ('x' in c)
+    return Number.isSafeInteger(c.x) &&
+      Number.isSafeInteger(c.z) &&
+      c.x >= 0 &&
+      c.z >= 0 &&
+      c.x < state.map.size &&
+      c.z < state.map.size
+      ? ''
+      : 'Choose a point inside the map.';
+  if (!('targetId' in c)) return 'Invalid unit order.';
+  const t = state.entities.find((t) => t.id === c.targetId);
+  if (!t || t.remembered || !canSee(state, e.owner as PlayerId, t)) return 'That target is no longer visible.';
+  if (c.type === 'guard')
+    return t.hp > 0 && t.owner === e.owner && t.id !== e.id && ['unit', 'building'].includes(t.category)
+      ? ''
+      : 'Guard a living friendly unit or building.';
+  if (c.type === 'heal')
+    return supportByUnit.has(e.kind) &&
+      t.owner === e.owner &&
+      t.hp > 0 &&
+      t.hp < t.maxHp &&
+      t.category === 'unit' &&
+      !unitById.get(t.kind)?.tags.includes('artillery') &&
+      !unitById.get(t.kind)?.tags.includes('siege')
+      ? ''
+      : 'A medic can heal an injured friendly living unit.';
+  if (c.type === 'attack')
+    return e.category === 'unit' &&
+      e.damage > 0 &&
+      t.hp > 0 &&
+      (t.owner !== e.owner || t.kind === 'sheep') &&
+      ['unit', 'building', 'animal'].includes(t.category)
+      ? ''
+      : 'This unit cannot attack that target.';
+  if (c.type === 'gather')
+    return e.kind === 'worker' &&
+      (t.amount > 0 || (t.kind === 'farm' && t.owner === e.owner && t.progress === 10000)) &&
+      (t.category === 'resource' || t.category === 'animal' || t.kind === 'farm')
+      ? ''
+      : 'Select a worker and an available resource.';
+  if (c.type === 'resume-build')
+    return e.kind === 'worker' &&
+      t.owner === e.owner &&
+      t.category === 'building' &&
+      t.hp > 0 &&
+      (t.progress < 10000 || t.hp < t.maxHp)
+      ? ''
+      : 'Select workers and an unfinished or damaged friendly building.';
+  if (c.type === 'garrison')
+    return e.kind === 'worker' &&
+      t.owner === e.owner &&
+      t.hp > 0 &&
+      t.progress === 10000 &&
+      garrisonCapacity(t.kind, state.players[e.owner - 1].age) > 0
+      ? ''
+      : 'Select villagers and a completed central hall or fort.';
+  return 'Invalid unit order.';
+}
+function startUnitOrder(state: MatchState, e: Entity, c: UnitCommand) {
+  e.directive = undefined;
+  e.attackAt = undefined;
+  e.attackStart = undefined;
+  e.lastTargetPosition = undefined;
+  e.path = undefined;
+  e.pathGoal = undefined;
+  e.workSlot = undefined;
+  e.waitingSince = undefined;
+  e.beforeFlee = undefined;
+  e.fleeUntil = undefined;
+  e.followId = undefined;
+  e.buildQueue = undefined;
+  e.working = false;
+  e.recoveryCount = 0;
+  e.progressAt = undefined;
+  e.progressDistance = undefined;
+  if (c.type === 'guard' || c.type === 'heal') {
+    e.task = c.type === 'heal' ? 'heal' : 'idle';
+    e.targetId = c.targetId;
+    if (c.type === 'guard')
+      e.directive = {kind: 'guard', x: e.x, z: e.z, originX: e.x, originZ: e.z, targetId: c.targetId};
+  } else if (c.type === 'attack-move' || c.type === 'patrol') {
+    applyCommand(state, {...c, type: 'move', entityIds: [e.id], queued: false, tick: state.tick}, true);
+    if (e.destX !== undefined && e.destZ !== undefined)
+      e.directive = {kind: c.type, x: e.destX, z: e.destZ, originX: e.x, originZ: e.z};
+  } else applyCommand(state, {...c, entityIds: [e.id], queued: false, tick: state.tick} as Command, true);
+}
+function issueUnitOrders(state: MatchState, command: Command) {
+  if (!unitOrderTypes.includes(command.type) || !('entityIds' in command)) return false;
+  const c = command as UnitCommand;
+  const ids = [...new Set(c.entityIds)].sort((a, b) => a - b),
+    columns = Math.ceil(Math.sqrt(ids.length)),
+    reserved = new Set<string>();
+  let accepted = 0,
+    reason = 'Select owned mobile units.';
+  for (const [i, id] of ids.entries()) {
+    const e = owned(state, id, c.playerId);
+    if (!e || !(e.category === 'unit' || e.kind === 'sheep')) continue;
+    const single = {...c, entityIds: [id]} as UnitCommand;
+    if ('x' in single) {
+      const invalidPoint = orderReason(state, e, single);
+      if (invalidPoint) {
+        reason = invalidPoint;
+        continue;
+      }
+      single.x = Math.trunc(single.x + ((i % columns) - (columns - 1) / 2) * 512);
+      single.z = Math.trunc(single.z + (Math.floor(i / columns) - (Math.ceil(ids.length / columns) - 1) / 2) * 512);
+      const destination = nearestPassable(state, single.x, single.z, e.owner, reserved);
+      if (!destination) {
+        reason = 'No passable destination near that point.';
+        continue;
+      }
+      [single.x, single.z] = destination;
+      reserved.add(`${single.x},${single.z}`);
+    }
+    const invalid = orderReason(state, e, single);
+    if (invalid) {
+      reason = invalid;
+      continue;
+    }
+    if (c.queued && (e.task !== 'idle' || e.directive || e.orders?.length)) {
+      if ((e.orders?.length ?? 0) >= 32) {
+        reason = 'Order queue is full (32 orders).';
+        continue;
+      }
+      (e.orders ??= []).push(single);
+    } else {
+      if (!c.queued) e.orders = [];
+      startUnitOrder(state, e, single);
+    }
+    accepted++;
+  }
+  event(
+    state,
+    accepted
+      ? `${c.queued ? 'Queued' : 'Ordered'} ${c.type} for ${accepted} unit${accepted === 1 ? '' : 's'}.${accepted < ids.length ? ` ${ids.length - accepted} skipped: ${reason}` : ''}`
+      : reason,
+    accepted ? 'order' : 'rejected',
+    c.playerId,
+  );
+  return true;
+}
+function updateDirective(state: MatchState, e: Entity) {
+  const d = e.directive;
+  if (!d || !e.owner) return;
+  const guarded =
+    d.kind === 'guard'
+      ? state.entities.find((t) => t.id === d.targetId && t.hp > 0 && t.owner === e.owner && !t.garrisonedIn)
+      : undefined;
+  if (d.kind === 'guard' && !guarded) {
+    e.directive = undefined;
+    e.task = 'idle';
+    return;
+  }
+  const anchor = guarded ?? {x: d.x, z: d.z};
+  if (e.task === 'attack') {
+    const target = state.entities.find((t) => t.id === e.targetId && t.hp > 0 && !t.garrisonedIn);
+    const leash = guarded ?? {x: d.chaseX ?? e.x, z: d.chaseZ ?? e.z};
+    if (target && canSee(state, e.owner as PlayerId, target) && dist(target, leash) <= 12 * WORLD_SCALE) return;
+    if (target) {
+      d.ignoredTarget = target.id;
+      d.ignoreUntil = state.tick + 100;
+    }
+    e.task = 'idle';
+    e.targetId = undefined;
+    e.attackAt = undefined;
+    e.path = undefined;
+  }
+  if (e.task !== 'move' && e.task !== 'idle') return;
+  if (e.damage > 0 && e.kind !== 'medic' && e.stance !== 'no-attack') {
+    const enemy = nearest(
+      state,
+      e,
+      (t) =>
+        t.owner > 0 &&
+        t.owner !== e.owner &&
+        !(t.id === d.ignoredTarget && state.tick < (d.ignoreUntil ?? 0)) &&
+        ['unit', 'building'].includes(t.category) &&
+        !t.garrisonedIn &&
+        canSee(state, e.owner as PlayerId, t) &&
+        dist(e, t) <= 8 * WORLD_SCALE &&
+        (!guarded || dist(t, guarded) <= 10 * WORLD_SCALE),
+    );
+    if (enemy) {
+      if (!guarded) {
+        d.chaseX = e.x;
+        d.chaseZ = e.z;
+      }
+      e.task = 'attack';
+      e.targetId = enemy.id;
+      e.path = undefined;
+      return;
+    }
+  }
+  if (guarded) {
+    const point = perimeterPoint(guarded, e.id % 8, guarded.category === 'building' ? 400 : 500);
+    if (dist(e, guarded) > (guarded.category === 'building' ? approachRange(guarded) + 700 : 900)) {
+      e.task = 'move';
+      e.destX = point.x;
+      e.destZ = point.z;
+    } else e.task = 'idle';
+  } else if (e.task === 'idle') {
+    if (d.kind === 'attack-move' && dist(e, anchor) <= 200) {
+      e.directive = undefined;
+      return;
+    }
+    if (d.kind === 'patrol' && dist(e, {x: d.returning ? d.originX : d.x, z: d.returning ? d.originZ : d.z}) <= 200)
+      d.returning = !d.returning;
+    e.destX = d.returning ? d.originX : d.x;
+    e.destZ = d.returning ? d.originZ : d.z;
+    e.task = 'move';
+    e.path = undefined;
+  }
+}
+function applyCommand(state: MatchState, c: Command, internal = false) {
   if (
     c.v !== 1 ||
     !Number.isSafeInteger(c.sequence) ||
@@ -563,7 +805,11 @@ function applyCommand(state: MatchState, c: Command) {
     return;
   const p = state.players[c.playerId - 1];
   if (p.resigned || state.winner) return;
-  p.stats.commands++;
+  if (!internal) p.stats.commands++;
+  if (!internal && issueUnitOrders(state, c)) {
+    state.commandLog.push(structuredClone(c));
+    return;
+  }
   if (c.type === 'resign') {
     p.resigned = true;
     if (c.playerId === 1) state.winner = state.players.find((x) => x.id !== 1 && !x.resigned)?.id ?? 0;
@@ -572,9 +818,18 @@ function applyCommand(state: MatchState, c: Command) {
     return;
   }
   if (c.type === 'stop') {
+    let stopped = 0;
     for (const id of c.entityIds) {
       const e = owned(state, id, c.playerId);
       if (e?.category === 'unit' || e?.kind === 'sheep') {
+        stopped++;
+        e.orders = [];
+        e.directive = undefined;
+        e.attackAt = undefined;
+        e.beforeFlee = undefined;
+        e.fleeUntil = undefined;
+        e.followId = undefined;
+        e.working = false;
         e.task = 'idle';
         e.path = undefined;
         e.pathGoal = undefined;
@@ -589,6 +844,12 @@ function applyCommand(state: MatchState, c: Command) {
         e.recoveryCount = 0;
       }
     }
+    event(
+      state,
+      stopped ? `Stopped ${stopped} units; queued orders cleared.` : 'Select owned mobile units to stop.',
+      stopped ? 'order' : 'rejected',
+      p.id,
+    );
   }
   if (c.type === 'move') {
     const ids = [...c.entityIds].sort((a, b) => a - b),
@@ -665,6 +926,9 @@ function applyCommand(state: MatchState, c: Command) {
       if (e) {
         e.stance = c.stance;
         if (c.stance === 'stand-ground') {
+          e.directive = undefined;
+          e.orders = [];
+          e.attackAt = undefined;
           e.task = 'idle';
           e.path = undefined;
           e.targetId = undefined;
@@ -915,7 +1179,7 @@ function applyCommand(state: MatchState, c: Command) {
     p.pendingDispatches.splice(index, 1);
     event(state, `${card.name} canceled; tokens refunded.`, 'dispatch-canceled', p.id);
   }
-  state.commandLog.push(structuredClone(c));
+  if (!internal) state.commandLog.push(structuredClone(c));
 }
 function moveToward(state: MatchState, e: Entity, x: number, z: number) {
   const distance = Math.max(Math.abs(x - e.x), Math.abs(z - e.z));
@@ -1225,8 +1489,65 @@ function updateUnit(state: MatchState, e: Entity) {
       e.waitingSince = undefined;
     }
   }
+  if (e.task === 'idle' && e.beforeFlee) return;
+  updateDirective(state, e);
+  if (e.task === 'idle' && !e.directive && e.orders?.length) {
+    // One activation per tick bounds work even when several targets have disappeared.
+    const next = e.orders.shift()! as UnitCommand;
+    const reason = orderReason(state, e, next);
+    if (reason) event(state, `Queued order skipped: ${reason}`, 'rejected', e.owner as PlayerId);
+    else startUnitOrder(state, e, next);
+  }
+  if (e.task === 'idle' && !e.directive && e.kind === 'medic' && e.owner) {
+    const target = nearest(
+      state,
+      e,
+      (t) =>
+        t.owner === e.owner &&
+        t.category === 'unit' &&
+        t.hp < t.maxHp &&
+        !t.garrisonedIn &&
+        !unitById.get(t.kind)?.tags.some((tag) => ['artillery', 'siege'].includes(tag)) &&
+        dist(e, t) <= 8 * WORLD_SCALE,
+    );
+    if (target) {
+      e.task = 'heal';
+      e.targetId = target.id;
+    }
+  }
+  if (e.task === 'heal') {
+    const target = state.entities.find(
+      (t) => t.id === e.targetId && t.hp > 0 && t.owner === e.owner && !t.garrisonedIn,
+    );
+    const ability = supportByUnit.get(e.kind);
+    if (!target || !ability || target.hp >= target.maxHp || !canSee(state, e.owner as PlayerId, target)) {
+      e.task = 'idle';
+      e.targetId = undefined;
+      return;
+    }
+    if (dist(e, target) > ability.range) {
+      const point = combatPoint(target, e);
+      moveToward(state, e, point.x, point.z);
+      return;
+    }
+    e.working = true;
+    if (!e.cooldown) {
+      target.hp = Math.min(target.maxHp, target.hp + ability.amount);
+      e.cooldown = ability.cooldown;
+      event(state, 'Friendly unit healed.', 'heal', e.owner as PlayerId);
+    }
+    return;
+  }
   if (e.kind === 'worker' && e.task === 'idle' && p) p.stats.idleWorkerTicks++;
-  if (e.task === 'idle' && e.owner && e.category === 'unit' && e.kind !== 'worker' && e.stance !== 'no-attack') {
+  if (
+    e.task === 'idle' &&
+    e.owner &&
+    e.category === 'unit' &&
+    e.kind !== 'worker' &&
+    e.kind !== 'medic' &&
+    !e.directive &&
+    e.stance !== 'no-attack'
+  ) {
     const enemy = nearest(
       state,
       e,
@@ -1272,6 +1593,21 @@ function updateUnit(state: MatchState, e: Entity) {
     return;
   }
   if (e.task === 'move') {
+    if ((e.recoveryCount ?? 0) >= 10) {
+      e.task = 'idle';
+      e.directive = undefined;
+      e.targetId = undefined;
+      e.path = undefined;
+      e.attackAt = undefined;
+      e.recoveryCount = 0;
+      event(
+        state,
+        'Movement failed after repeated recovery attempts. Choose another destination.',
+        'rejected',
+        e.owner as PlayerId,
+      );
+      return;
+    }
     let x = e.destX ?? e.x,
       z = e.destZ ?? e.z;
     if (blocked(state, x, z, e.owner)) {
@@ -1481,7 +1817,13 @@ function damage(state: MatchState, source: Entity | undefined, target: Entity, a
       .sort((a, b) => dist(b, source) - dist(a, source) || a.x - b.x || a.z - b.z);
     const safe = options[0];
     if (safe) {
-      target.beforeFlee ??= {task: target.task, targetId: target.targetId, resourceTargetId: target.resourceTargetId};
+      target.beforeFlee ??= {
+        task: target.task,
+        targetId: target.targetId,
+        resourceTargetId: target.resourceTargetId,
+        destX: target.destX,
+        destZ: target.destZ,
+      };
       target.fleeUntil = state.tick + 100;
       target.task = 'move';
       target.destX = safe.x;
@@ -1708,7 +2050,7 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
     const r = state.entities.find((e) => e.id === w.resourceTargetId || e.id === w.targetId);
     if (r && ['gather', 'carry'].includes(w.task)) assigned[resourceKind(r)]++;
   }
-  for (const w of workers.filter((x) => x.task === 'idle')) {
+  for (const w of workers.filter((x) => x.task === 'idle' && !x.beforeFlee && !x.garrisonedIn)) {
     const wanted = (['provisions', 'timber', 'metal', 'coin'] as ResourceKind[]).sort(
       (a, b) =>
         (p.resources[a] + assigned[a] * 7000) / (a === 'provisions' ? 3 : a === 'timber' ? 2 : 1) -
@@ -2233,6 +2575,8 @@ export function createSnapshot(state: MatchState, viewer: PlayerId, includeCheck
     entities: structuredClone(
       observedEntities(state, viewer).map((e) => ({
         ...e,
+        orders: e.owner === viewer ? e.orders : undefined,
+        directive: e.owner === viewer ? e.directive : undefined,
         garrisonCount: e.owner === viewer ? (occupants.get(e.id) ?? 0) : undefined,
       })),
     ),

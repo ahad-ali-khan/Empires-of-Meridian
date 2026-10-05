@@ -24,7 +24,7 @@ Empires of Meridian is an original real-time strategy game built around a determ
 
 ## A closer look
 
-The map is built to reward readable decisions. A worker can be selected, sent to a specific resource, carry the result back to a valid drop-off, and continue the local resource loop as nearby nodes are depleted. Production buildings expose their queue and rally point directly in the world. Seven timed technologies improve the settlement, including a real militia-to-swordsman upgrade; queued research and training can be cancelled with an explicit refund. Walls, gates, and age changes make the settlement legible from a distance.
+The map is built to reward readable decisions. A worker can be selected, sent to a specific resource, carry the result back to a valid drop-off, and continue the local resource loop as nearby nodes are depleted. Production buildings expose their queue and rally point directly in the world. Seven timed technologies improve the settlement, including a real militia-to-swordsman upgrade; queued research and training can be cancelled with an explicit refund. Shift-right-click queues orders; attack-move, patrol, guard, and medic healing provide deliberate battlefield control. Walls, gates, and age changes make the settlement legible from a distance.
 
 <table>
   <tr>

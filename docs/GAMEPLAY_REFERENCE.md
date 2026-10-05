@@ -1,6 +1,6 @@
 # Gameplay content reference
 
-Generated from validated content version 6. Do not edit by hand.
+Generated from validated content version 7. Do not edit by hand.
 
 ## Units
 
@@ -83,6 +83,18 @@ Advancement requires a completed central hall and pauses without one. Only one c
 - Age 2: 30s; 500 provisions · 300 timber.
 - Age 3: 30s; 700 provisions · 400 timber · 250 coin · 150 metal.
 - Age 4: 30s; 900 provisions · 600 timber · 500 coin · 400 metal.
+
+## Contextual and queued orders
+
+Right-click selects a contextual order. Hold Shift to append rather than replace; each unit has at most 32 pending orders. Stop clears queued orders and active directives. Active harvesting runs until the local resource work finishes; a queued move does not interrupt each carry/deposit trip. Permanent patrol and guard orders require Stop or a replacement order before later queued orders can run. Missing or newly hidden targets are skipped with feedback at activation. Failed movement releases the active order after ten failed recovery intervals, permitting the next queued order. Queued commands remain private to their owner.
+
+- Attack-move (T): engage visible enemies along the route, then resume toward the destination. Pursuit is bounded; fleeing enemies are temporarily ignored after exceeding the pursuit limit.
+- Patrol (P): travel between the starting point and destination, engaging nearby enemies and resuming the current leg afterwards.
+- Guard (G): follow and defend a friendly unit or building; stop guarding if that target dies or enters a garrison.
+- Heal (H): medics approach injured friendly living units and treat them on fixed simulation ticks. Idle medics seek nearby injured friendlies. Machines cannot be healed; worker repairs handle buildings separately.
+- Escape cancels targeting; WASD continues to control the camera. Selection shows the active order and pending order list.
+
+- Field Medic: Restore 5 health per second to a nearby friendly living unit. Cannot heal machines or revive the dead. Range 3 world units; interval 1s.
 
 ## Research and production
 

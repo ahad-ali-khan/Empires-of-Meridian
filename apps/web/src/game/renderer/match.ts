@@ -84,6 +84,11 @@ export class MatchRenderer {
   private ghostFootprint?: T.Mesh<T.PlaneGeometry, T.MeshBasicMaterial>;
   private placementQuarter: 0 | 1 | 2 | 3 = 0;
   private placing?: string;
+  private ordering = false;
+  setOrderMode(active: boolean) {
+    this.ordering = active;
+    this.renderer.domElement.style.cursor = active ? 'crosshair' : 'grab';
+  }
   private geometries = new Set<T.BufferGeometry>();
   private materials = new Set<T.Material>();
   private sun = new T.DirectionalLight('#ffead0', 2.6);
@@ -94,7 +99,7 @@ export class MatchRenderer {
   constructor(
     private host: HTMLElement,
     private onSelect: (id: number, add: boolean, button: number) => void,
-    private onGround: (x: number, z: number, button: number) => void,
+    private onGround: (x: number, z: number, button: number, queued?: boolean) => void,
     private onGroup: (ids: number[], add: boolean) => void = () => {},
   ) {
     this.renderer = new T.WebGLRenderer({antialias: true, powerPreference: 'high-performance'});
@@ -646,7 +651,13 @@ export class MatchRenderer {
                           : undefined
                 : undefined
           : undefined;
-      this.renderer.domElement.style.cursor = type ? this.cursor(type) : id ? 'pointer' : 'grab';
+      this.renderer.domElement.style.cursor = this.ordering
+        ? 'crosshair'
+        : type
+          ? this.cursor(type)
+          : id
+            ? 'pointer'
+            : 'grab';
     }
     if (this.ghost) {
       this.setRay(e);
@@ -741,7 +752,7 @@ export class MatchRenderer {
     this.setRay(e);
     const hit = this.ray.intersectObject(this.ground)[0];
     if (hit) {
-      this.onGround(hit.point.x, hit.point.z, e.button);
+      this.onGround(hit.point.x, hit.point.z, e.button, e.shiftKey);
       if (e.button === 2) this.mark(hit.point.x, hit.point.z);
     }
   };
@@ -1184,11 +1195,15 @@ export class MatchRenderer {
                           : 'gather'
                 : e.task === 'build' && e.category === 'unit'
                   ? 'build'
-                  : e.task === 'attack'
-                    ? 'attack'
-                    : e.category === 'animal'
-                      ? 'graze'
-                      : 'idle';
+                  : e.task === 'heal'
+                    ? e.working
+                      ? 'heal'
+                      : 'idle'
+                    : e.task === 'attack'
+                      ? 'attack'
+                      : e.category === 'animal'
+                        ? 'graze'
+                        : 'idle';
       if (v.clip !== clip) {
         v.clip = clip;
         v.phase = this.time;

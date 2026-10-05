@@ -27,6 +27,7 @@ export type Command =
       playerId: PlayerId;
       sequence: number;
       type: 'resume-build' | 'garrison';
+      queued?: boolean;
       entityIds: number[];
       targetId: number;
     }
@@ -45,7 +46,8 @@ export type Command =
       tick: number;
       playerId: PlayerId;
       sequence: number;
-      type: 'move';
+      type: 'move' | 'attack-move' | 'patrol';
+      queued?: boolean;
       entityIds: number[];
       x: number;
       z: number;
@@ -56,7 +58,8 @@ export type Command =
       tick: number;
       playerId: PlayerId;
       sequence: number;
-      type: 'gather' | 'attack';
+      type: 'gather' | 'attack' | 'guard' | 'heal';
+      queued?: boolean;
       entityIds: number[];
       targetId: number;
     }

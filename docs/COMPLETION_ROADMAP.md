@@ -36,8 +36,10 @@ Full milestone gates in `data.md` and the accepted Milestone 1 plan remain autho
 
 - Research and production: seven validated technologies, shared timed building queues, prerequisite/age/ownership checks, duplicate prevention, full upfront reservation, cancellation refunds, reserved-population release, research completion bonuses, and real Forged Blades militia-to-swordsman conversion. AI orders research through the player command path. Research persists across save/load. Full unit suite and focused browser results are recorded in `PROJECT_STATE.md`.
 
-## Next increment — dependable contextual commands
+- Contextual commands: owner-private Shift queues, replacement/Stop rules, attack-move with bounded pursuit and route resumption, two-point patrol, friendly guard, data-driven medic treatment, runtime hand poses, active/pending order HUD, targeting cursor and buttons, accepted/rejected feedback, group destination reservation, interrupted-worker recovery and bounded movement failure. Simulation, save/replay and live Chromium interaction evidence is recorded in `PROJECT_STATE.md`.
 
-Audit and complete queued orders, attack-move, patrol, guard, support abilities and command feedback. Verify interruption/recovery and moving-target engagement with replayable tests before adding trade/treasure systems. Offline full-match, AI, cross-browser and hardware certification still precede online work.
+## Next increment — trade, treasures and neutral objectives
+
+Implement deliberate resource exchange and trade income, explorer treasure interactions and recovery, contested neutral objectives and inspectable outcomes. Further specialized unit abilities and queued blueprint placement remain part of offline rule completion. Reuse authoritative costs/ticks, legal visibility and save/replay invariants. Offline full-match, AI, cross-browser and hardware certification still precede online work.
 
 No networking, chat, campaigns, additional factions, or whole-game completion is claimed by these increments.

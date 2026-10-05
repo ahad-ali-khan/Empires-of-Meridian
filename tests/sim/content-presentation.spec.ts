@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 import * as T from 'three';
-import {buildAsset, type AssetKind} from '../../packages/asset-tools/src/models';
+import {buildAsset, animateAsset, type AssetKind} from '../../packages/asset-tools/src/models';
 import {buildings, units} from '../../packages/content/src/index';
 import {createMatch, step} from '../../packages/sim/src/index';
 import type {Command} from '../../packages/protocol/src/index';
@@ -50,4 +50,20 @@ test('the playable progression reaches Industrial and exposes Industrial content
   barracks.queue = [{kind: 'veteranRifle', remaining: 100, total: 100}];
   step(state, []);
   expect(barracks.queue[0]?.remaining).toBe(98);
+});
+
+test('medic treatment has a distinct finite hand pose and returns to idle cleanly', () => {
+  const model = buildAsset('medic', 3);
+  const hand = model.getObjectByName('hand1')!;
+  animateAsset(model, 0, 'idle');
+  model.updateMatrixWorld(true);
+  const idle = hand.getWorldPosition(new T.Vector3());
+  animateAsset(model, 0.5, 'heal');
+  model.updateMatrixWorld(true);
+  const treating = hand.getWorldPosition(new T.Vector3());
+  expect(treating.toArray().every(Number.isFinite)).toBe(true);
+  expect(treating.distanceTo(idle)).toBeGreaterThan(0.02);
+  animateAsset(model, 0, 'idle');
+  model.updateMatrixWorld(true);
+  expect(hand.getWorldPosition(new T.Vector3()).distanceTo(idle)).toBeLessThan(0.0001);
 });

@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ResourceKind, Resources} from '../../protocol/src/index';
 
-export const CONTENT_VERSION = 6;
+export const CONTENT_VERSION = 7;
 const bundle = z.object({
   provisions: z.number().int().nonnegative(),
   timber: z.number().int().nonnegative(),
@@ -1119,3 +1119,27 @@ export function productionName(kind: string) {
     ? (technologyById.get(kind.slice(9))?.name ?? kind)
     : (unitById.get(kind)?.name ?? kind);
 }
+
+export const supportAbilities = z
+  .array(
+    z.object({
+      unitId: z.string(),
+      kind: z.literal('heal'),
+      range: z.number().int().positive(),
+      cooldown: z.number().int().positive(),
+      amount: z.number().int().positive(),
+      description: z.string(),
+    }),
+  )
+  .parse([
+    {
+      unitId: 'medic',
+      kind: 'heal',
+      range: 3 * 256,
+      cooldown: 20,
+      amount: 5,
+      description:
+        'Restore 5 health per second to a nearby friendly living unit. Cannot heal machines or revive the dead.',
+    },
+  ]);
+export const supportByUnit = new Map(supportAbilities.map((a) => [a.unitId, a]));
