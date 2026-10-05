@@ -88,6 +88,7 @@ export type Command =
       playerId: PlayerId;
       sequence: number;
       type: 'build';
+      queued?: boolean;
       workerIds: number[];
       buildingId: string;
       x: number;
@@ -96,6 +97,7 @@ export type Command =
       endX?: number;
       endZ?: number;
     }
+  | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'cancel-construction'; buildingId: number}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'convert-gate'; buildingId: number}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'advance'; councilId: string}
   | {v: 1; tick: number; playerId: PlayerId; sequence: number; type: 'dispatch'; dispatchId: string}

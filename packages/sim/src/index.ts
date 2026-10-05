@@ -1179,12 +1179,20 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
   if (c.type === 'build') {
     const d = buildingById.get(c.buildingId);
     if (!d || d.age > p.age) return;
+    const selectedBuilders = [...new Set(c.workerIds)]
+      .sort((a, b) => a - b)
+      .map((id) => owned(state, id, c.playerId))
+      .filter((e): e is Entity => e?.kind === 'worker');
+    const queueCount =
+      d.id === 'wall' && c.endX !== undefined && c.endZ !== undefined ? wallSpans(c.x, c.z, c.endX, c.endZ).length : 1;
+    if (c.queued && selectedBuilders.some((w) => (w.orders?.length ?? 0) + queueCount > 32)) {
+      event(state, 'Builder order queue is full (32 orders). No blueprint or cost reserved.', 'rejected', p.id);
+      return;
+    }
     if (d.id === 'wall' && c.endX !== undefined && c.endZ !== undefined) {
       const spans = wallSpans(c.x, c.z, c.endX, c.endZ);
       const cost = Object.fromEntries(Object.entries(d.cost).map(([k, n]) => [k, n * spans.length])) as Resources;
-      const workers = c.workerIds
-        .map((id) => owned(state, id, c.playerId))
-        .filter((e): e is Entity => e?.kind === 'worker');
+      const workers = selectedBuilders;
       const reason = wallPlacementReason(state, spans, p.id);
       if (reason || !workers.length || !canPay(p, cost)) {
         event(state, reason || 'Not enough resources or no builders selected.', 'rejected', p.id);
@@ -1197,12 +1205,35 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
         return b.id;
       });
       for (const w of workers) {
+        if (c.queued) {
+          for (const targetId of ids)
+            issueUnitOrders(state, {
+              v: 1,
+              tick: state.tick,
+              playerId: p.id,
+              sequence: c.sequence,
+              type: 'resume-build',
+              entityIds: [w.id],
+              targetId,
+              queued: true,
+            });
+          continue;
+        }
         const current = state.entities.find((e) => e.id === w.targetId && e.kind === 'wall' && e.progress < 10000);
         if (w.task === 'build' && current) {
           w.buildQueue = [...(w.buildQueue ?? []), ...ids];
           continue;
         }
-        w.task = 'build';
+        startUnitOrder(state, w, {
+          v: 1,
+          tick: state.tick,
+          playerId: p.id,
+          sequence: c.sequence,
+          type: 'resume-build',
+          entityIds: [w.id],
+          targetId: ids[0],
+        });
+        w.orders = [];
         w.targetId = ids[0];
         w.buildQueue = ids.slice(1);
         w.workSlot = undefined;
@@ -1219,21 +1250,47 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
       if (c.playerId === 1) event(state, reason || 'Not enough resources.', 'rejected');
       return;
     }
-    const workers = c.workerIds
-      .map((id) => owned(state, id, c.playerId))
-      .filter((e) => e?.kind === 'worker') as Entity[];
+    const workers = selectedBuilders;
     if (!workers.length) return;
     pay(p, d.cost);
     const b = building(state, c.playerId, d.id, c.x, c.z, false, c.rotation);
-    for (const w of workers) {
-      w.task = 'build';
-      w.buildQueue = undefined;
-      w.workSlot = undefined;
-      w.waitingSince = undefined;
-      w.targetId = b.id;
-      w.path = undefined;
-      w.pathGoal = undefined;
+    issueUnitOrders(state, {
+      v: 1,
+      tick: state.tick,
+      playerId: p.id,
+      sequence: c.sequence,
+      type: 'resume-build',
+      entityIds: workers.map((w) => w.id),
+      targetId: b.id,
+      queued: c.queued,
+    });
+    event(state, `${d.name} blueprint reserved${c.queued ? ' and queued' : ''}.`, 'build', p.id);
+  }
+  if (c.type === 'cancel-construction') {
+    const b = owned(state, c.buildingId, p.id);
+    const d = b && buildingById.get(b.kind);
+    if (!b || !d || b.category !== 'building' || b.progress === 10000 || b.tradeSite) {
+      event(state, 'Select an owned unfinished structure to cancel.', 'rejected', p.id);
+      return;
     }
+    const refund = b.progress === 0 ? 10000 : 5000;
+    for (const kind of Object.keys(d.cost) as ResourceKind[])
+      p.resources[kind] += Math.trunc((d.cost[kind] * refund) / 10000);
+    state.entities = state.entities.filter((e) => e.id !== b.id);
+    for (const worker of state.entities.filter((e) => e.owner === p.id && e.kind === 'worker')) {
+      worker.orders = worker.orders?.filter((q) => !('targetId' in q && q.targetId === b.id));
+      worker.buildQueue = worker.buildQueue?.filter((id) => id !== b.id);
+      if (worker.task === 'build' && worker.targetId === b.id) {
+        worker.task = worker.buildQueue?.length ? 'build' : 'idle';
+        worker.targetId = undefined;
+        worker.path = undefined;
+        worker.pathGoal = undefined;
+        worker.workSlot = undefined;
+        worker.working = false;
+      }
+    }
+    invalidateNavigation(state);
+    event(state, `${d.name} construction cancelled; ${refund / 100}% refunded.`, 'construction-cancelled', p.id);
   }
   if (c.type === 'convert-gate') {
     const b = owned(state, c.buildingId, p.id),

@@ -1,5 +1,5 @@
 import {expect, test, type Page} from '@playwright/test';
-import {createMatch, serializeSave} from '../packages/sim/src/index';
+import {createMatch, serializeSave, placementReason} from '../packages/sim/src/index';
 import {unitById} from '../packages/content/src/index';
 test.use({launchOptions: {args: process.platform === 'darwin' ? ['--use-angle=metal'] : []}});
 async function openMatch(page: Page, save: ReturnType<typeof serializeSave>) {
@@ -91,5 +91,75 @@ test('group attack orders keep the live simulation advancing', async ({page}) =>
   await expect
     .poll(() => page.evaluate(() => (window as any).meridianInspect.snapshot().tick), {timeout: 10000})
     .toBeGreaterThan(before + 40);
+  expect(errors).toEqual([]);
+});
+
+test('Shift placement repeats reserved blueprints and selected construction can be cancelled', async ({page}) => {
+  test.setTimeout(120000);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  const s = createMatch({
+    v: 1,
+    seed: 73,
+    mode: 'skirmish',
+    difficulty: 'standard',
+    populationCap: 200,
+    gameSpeed: 1,
+    aiCount: 0,
+    fogOfWar: false,
+  });
+  const worker = s.entities.find((e) => e.kind === 'worker')!,
+    hall = s.entities.find((e) => e.kind === 'hall')!;
+  s.entities = [worker, hall];
+  s.players[0].resources.timber = 100000;
+  const candidates: {x: number; z: number}[] = [];
+  for (let z = -20; z <= 20; z += 10)
+    for (let x = -20; x <= 20; x += 10) {
+      const p = {x: hall.x + x * 256, z: hall.z + z * 256};
+      if (!placementReason(s, 'house', p.x, p.z)) candidates.push(p);
+    }
+  const click = await openMatch(page, serializeSave(s));
+  const points = await page.evaluate((options) => {
+    const inspect = (window as any).meridianInspect;
+    return options
+      .map((p) => ({...p, screen: inspect.projectWorld(p.x / 256, p.z / 256)}))
+      .filter(
+        (p) => p.screen.x > 60 && p.screen.x < innerWidth - 340 && p.screen.y > 180 && p.screen.y < innerHeight - 230,
+      );
+  }, candidates);
+  expect(points.length).toBeGreaterThanOrEqual(3);
+  await click(worker.id);
+  await page.mouse.click(points[0].screen.x, points[0].screen.y, {button: 'right'});
+  await page.getByRole('button', {name: /Harbor Residence/}).click();
+  await page.keyboard.press('KeyE');
+  await page.keyboard.down('Shift');
+  await page.mouse.move(points[1].screen.x, points[1].screen.y);
+  await page.screenshot({path: 'test-results/queued-blueprint-preview.png'});
+  await page.mouse.click(points[1].screen.x, points[1].screen.y);
+  await page.mouse.click(points[2].screen.x, points[2].screen.y);
+  await page.keyboard.up('Shift');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as any).meridianInspect.snapshot().entities.filter((e: any) => e.kind === 'house').length,
+      ),
+    )
+    .toBe(2);
+  await expect(page.locator('.selection-info')).toContainText('2 queued');
+  const plan = await page.evaluate(() =>
+    (window as any).meridianInspect
+      .snapshot()
+      .entities.filter((e: any) => e.kind === 'house')
+      .at(-1),
+  );
+  expect(plan.rotation).toBe(1);
+  await page.mouse.click(points[2].screen.x, points[2].screen.y, {button: 'right'});
+  await click(plan.id);
+  await page.getByRole('button', {name: /Cancel construction/}).click();
+  await expect
+    .poll(() =>
+      page.evaluate((id) => (window as any).meridianInspect.snapshot().entities.some((e: any) => e.id === id), plan.id),
+    )
+    .toBe(false);
   expect(errors).toEqual([]);
 });

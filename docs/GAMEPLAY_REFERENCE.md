@@ -1,6 +1,6 @@
 # Gameplay content reference
 
-Generated from validated content version 8. Do not edit by hand.
+Generated from validated content version 9. Do not edit by hand.
 
 ## Units
 
@@ -95,6 +95,12 @@ Right-click selects a contextual order. Hold Shift to append rather than replace
 - Escape cancels targeting; WASD continues to control the camera. Selection shows the active order and pending order list.
 
 - Field Medic: Restore 5 health per second to a nearby friendly living unit. Cannot heal machines or revive the dead. Range 3 world units; interval 1s.
+
+## Queued construction
+
+Select workers and choose a building. Q / E rotates its preview. Shift-click reserves a blueprint, its fixed footprint and its full cost, while appending construction to the workers' existing orders. Keep Shift-clicking to reserve another of the same type; right-click or Escape ends the preview without removing reserved sites. Normal placement replaces pending work. Wall segments can also be queued after other orders. An invalid position, insufficient resources or a full 32-order queue reserves nothing.
+
+Stopping builders leaves unfinished sites resumable. Select an unfinished owned structure and cancel construction to release its footprint: an untouched blueprint refunds 100%; started work refunds 50%. Cancellation removes that target from builder queues and cannot refund twice. Save/load retains order IDs, reserved structures, rotation and progress. Ongoing gathering (including renewable farms) must finish or be replaced before a later queued build starts.
 
 ## Trade and frontier objectives
 

@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ResourceKind, Resources} from '../../protocol/src/index';
 
-export const CONTENT_VERSION = 8;
+export const CONTENT_VERSION = 9;
 const bundle = z.object({
   provisions: z.number().int().nonnegative(),
   timber: z.number().int().nonnegative(),

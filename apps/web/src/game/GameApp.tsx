@@ -478,7 +478,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
           if (button === 2) {
             buildMode.current = undefined;
             r.setPlacement();
-            setMessage('Placement cancelled.');
+            setMessage('Placement finished. Reserved blueprints remain available for construction.');
             return;
           }
           if (buildMode.current === 'wall') {
@@ -517,6 +517,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
               z: Math.round(r.wallAnchor.z * 256),
               endX: Math.round(x * 256),
               endZ: Math.round(z * 256),
+              queued,
             } as never);
             r.wallAnchor = {x, z};
             return;
@@ -541,11 +542,18 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
             x: Math.round(x * 256),
             z: Math.round(z * 256),
             rotation: r.getPlacementRotation(),
+            queued,
           } as never);
           playAudio('ui.build.placed');
-          buildMode.current = undefined;
-          r.setPlacement();
-          setMessage('Construction order issued.');
+          if (!queued) {
+            buildMode.current = undefined;
+            r.setPlacement();
+          }
+          setMessage(
+            queued
+              ? 'Blueprint reserved and queued. Shift-place another; right-click finishes.'
+              : 'Construction order issued.',
+          );
           return;
         }
         if ((button === 2 || orderMode.current) && selectedRef.current.size) orderAt(x, z, undefined, queued);
@@ -927,6 +935,12 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                   </button>
                 );
               })}
+          {one?.owner === 1 && one.category === 'building' && one.progress < 10000 && (
+            <button onClick={() => send({type: 'cancel-construction', buildingId: one.id})}>
+              Cancel construction · {one.progress === 0 ? '100%' : '50%'} refund
+              <small>Remove this blueprint and release its footprint</small>
+            </button>
+          )}
           {one?.owner === 1 && one.incapacitatedAt !== undefined && (
             <button
               disabled={
@@ -1011,7 +1025,9 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                   engine.current?.setOrderMode(false);
                   buildMode.current = b.id;
                   engine.current?.setPlacement(b.id);
-                  setMessage(`Place ${b.name} on clear ground. Q / E rotates the preview.`);
+                  setMessage(
+                    `Place ${b.name} on clear ground. Q / E rotates; Shift-click queues and repeats; right-click finishes.`,
+                  );
                 }}
               >
                 {b.name}
