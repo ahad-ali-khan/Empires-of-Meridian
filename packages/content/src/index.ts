@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ResourceKind, Resources} from '../../protocol/src/index';
 
-export const CONTENT_VERSION = 4;
+export const CONTENT_VERSION = 5;
 const bundle = z.object({
   provisions: z.number().int().nonnegative(),
   timber: z.number().int().nonnegative(),
@@ -838,71 +838,121 @@ export function dispatchDescription(card: DispatchDefinition) {
   ].join(' · ');
 }
 
-export const councilChoices = [
-  {
-    id: 'harvest-council',
-    age: 2,
-    name: 'Harvest Council',
-    delivery: {provisions: 12000, timber: 8000, coin: 0, metal: 0},
-    modifier: 'gather',
+const councilModifierSchema = z.object({
+  description: z.string(),
+  gather: z.number().int().default(10000),
+  production: z.number().int().default(10000),
+  construction: z.number().int().default(10000),
+  carry: z.number().int().default(10000),
+  military: z.number().int().default(10000),
+  artillery: z.number().int().default(10000),
+  buildingDamage: z.number().int().default(10000),
+  market: z.number().int().default(10000),
+});
+export const councilModifiers = z.record(z.string(), councilModifierSchema).parse({
+  gather: {description: 'Workers gather 25% faster.', gather: 12500},
+  military: {description: 'Military units deal 10% more damage.', military: 11000},
+  market: {description: 'Markets produce 20% more Coin.', market: 12000},
+  production: {description: 'Unit training progresses 25% faster.', production: 12500},
+  defense: {description: 'Buildings take 15% less damage.', buildingDamage: 8500},
+  'industrial-production': {
+    description: 'Unit training and construction progress twice as fast.',
+    production: 20000,
+    construction: 20000,
   },
-  {
-    id: 'charter-guard',
-    age: 2,
-    name: 'Charter Guard',
-    delivery: {provisions: 5000, timber: 0, coin: 5000, metal: 5000},
-    modifier: 'military',
-  },
-  {
-    id: 'coastal-trade',
-    age: 2,
-    name: 'Coastal Trade',
-    delivery: {provisions: 0, timber: 6000, coin: 12000, metal: 0},
-    modifier: 'market',
-  },
-  {
-    id: 'guild-council',
-    age: 3,
-    name: 'Guild Council',
-    delivery: {provisions: 9000, timber: 9000, coin: 9000, metal: 0},
-    modifier: 'production',
-  },
-  {
-    id: 'bastion-council',
-    age: 3,
-    name: 'Bastion Council',
-    delivery: {provisions: 0, timber: 8000, coin: 0, metal: 14000},
-    modifier: 'defense',
-  },
-  {
-    id: 'field-command',
-    age: 3,
-    name: 'Field Command',
-    delivery: {provisions: 8000, timber: 0, coin: 8000, metal: 8000},
-    modifier: 'military',
-  },
-  {
-    id: 'industrial-guilds',
-    age: 4,
-    name: 'Industrial Guilds',
-    delivery: {provisions: 10000, timber: 12000, coin: 14000, metal: 10000},
-    modifier: 'industrial-production',
-  },
-  {
-    id: 'modern-logistics',
-    age: 4,
-    name: 'Modern Logistics',
-    delivery: {provisions: 18000, timber: 10000, coin: 8000, metal: 8000},
-    modifier: 'industrial-logistics',
-  },
-  {
-    id: 'artillery-board',
-    age: 4,
-    name: 'Artillery Board',
-    delivery: {provisions: 6000, timber: 6000, coin: 12000, metal: 18000},
-    modifier: 'industrial-military',
-  },
-];
+  'industrial-logistics': {description: 'Workers carry 50% more resources.', carry: 15000},
+  'industrial-military': {description: 'Artillery deals 20% more damage.', artillery: 12000},
+});
+export type CouncilStat = Exclude<keyof z.infer<typeof councilModifierSchema>, 'description'>;
+export function councilRate(modifiers: string[], stat: CouncilStat) {
+  return (
+    10000 + [...new Set(modifiers)].reduce((total, id) => total + ((councilModifiers[id]?.[stat] ?? 10000) - 10000), 0)
+  );
+}
+export const advancements = z
+  .array(z.object({age: z.number().int().min(2).max(4), ticks: z.number().int().positive(), cost: bundle}))
+  .parse([
+    {age: 2, ticks: 600, cost: cost(50000, 30000)},
+    {age: 3, ticks: 600, cost: cost(70000, 40000, 25000, 15000)},
+    {age: 4, ticks: 600, cost: cost(90000, 60000, 50000, 40000)},
+  ]);
+export const councilChoices = z
+  .array(
+    z.object({
+      id: z.string(),
+      age: z.number().int().min(2).max(4),
+      name: z.string(),
+      delivery: bundle,
+      modifier: z.string(),
+    }),
+  )
+  .parse([
+    {
+      id: 'harvest-council',
+      age: 2,
+      name: 'Harvest Council',
+      delivery: {provisions: 12000, timber: 8000, coin: 0, metal: 0},
+      modifier: 'gather',
+    },
+    {
+      id: 'charter-guard',
+      age: 2,
+      name: 'Charter Guard',
+      delivery: {provisions: 5000, timber: 0, coin: 5000, metal: 5000},
+      modifier: 'military',
+    },
+    {
+      id: 'coastal-trade',
+      age: 2,
+      name: 'Coastal Trade',
+      delivery: {provisions: 0, timber: 6000, coin: 12000, metal: 0},
+      modifier: 'market',
+    },
+    {
+      id: 'guild-council',
+      age: 3,
+      name: 'Guild Council',
+      delivery: {provisions: 9000, timber: 9000, coin: 9000, metal: 0},
+      modifier: 'production',
+    },
+    {
+      id: 'bastion-council',
+      age: 3,
+      name: 'Bastion Council',
+      delivery: {provisions: 0, timber: 8000, coin: 0, metal: 14000},
+      modifier: 'defense',
+    },
+    {
+      id: 'field-command',
+      age: 3,
+      name: 'Field Command',
+      delivery: {provisions: 8000, timber: 0, coin: 8000, metal: 8000},
+      modifier: 'military',
+    },
+    {
+      id: 'industrial-guilds',
+      age: 4,
+      name: 'Industrial Guilds',
+      delivery: {provisions: 10000, timber: 12000, coin: 14000, metal: 10000},
+      modifier: 'industrial-production',
+    },
+    {
+      id: 'modern-logistics',
+      age: 4,
+      name: 'Industrial Logistics',
+      delivery: {provisions: 18000, timber: 10000, coin: 8000, metal: 8000},
+      modifier: 'industrial-logistics',
+    },
+    {
+      id: 'artillery-board',
+      age: 4,
+      name: 'Artillery Board',
+      delivery: {provisions: 6000, timber: 6000, coin: 12000, metal: 18000},
+      modifier: 'industrial-military',
+    },
+  ]);
+for (const choice of councilChoices)
+  if (!councilModifiers[choice.modifier]) throw new Error(`Unknown council modifier: ${choice.id}`);
 export function sightFor(kind: string, age = 1) {
   const ranges: Record<string, number> = {
     worker: 13,

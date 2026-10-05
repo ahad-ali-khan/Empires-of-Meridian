@@ -115,3 +115,22 @@ test('save/load during transit preserves final checksums and hides the charter f
   expect(s.players[0].usedDispatches).toEqual(['charter-6']);
   expect(s.entities.filter((e) => e.owner === 1 && e.kind === 'militia')).toHaveLength(3);
 });
+
+test('delivery respects population reserved by unfinished training queues', () => {
+  const s = match(),
+    p = s.players[0],
+    hall = s.entities.find((e) => e.owner === 1 && e.kind === 'hall')!;
+  const live = s.entities
+    .filter((e) => e.owner === 1 && e.category === 'unit')
+    .reduce((sum, e) => sum + e.population, 0);
+  p.populationCap = live + 2;
+  hall.queue = [{kind: 'worker', remaining: 1000, total: 1000}];
+  p.population = live + 1;
+  order(s, 'dispatch', 'charter-5');
+  until(s, p.pendingDispatches[0].arrivalTick);
+  expect(p.pendingDispatches[0].waiting).toContain('population');
+  p.populationCap += 1;
+  step(s, []);
+  expect(p.pendingDispatches).toHaveLength(0);
+  expect(p.population).toBe(live + 3);
+});

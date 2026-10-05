@@ -40,3 +40,9 @@ Dispatch lifecycle increment: content version 4, 24 distinct resource/unit cards
 Fresh evidence: six Dispatch simulation regressions pass, including mid-transit save/restore final checksum parity; full unit suite 49/49 passes; ESLint and production build pass (existing bundle-size advisory). A real Chromium interaction test passes: all 24 cards, real worker delivery text, token reservation, transit display and cancellation/refund, without page errors. Headless software rendering stalled menu clicks; Metal rendering on this macOS host completed the flow in 7.1s. No full-match or milestone release gate is certified.
 
 Next three tasks: complete council modifier effects and choice UI; implement research/upgrade queues; expand reliable command coverage before offline certification and multiplayer.
+
+Council continuation: content version 5 introduces validated advancement costs/durations and modifier definitions. All nine council choices are exposed in the HUD with resource deliveries and permanent effects. Gathering, unit production, building defense, military/artillery damage, market income and worker carrying effects use deterministic shared rates; production retains integer fractional progress across saves. A missing hall pauses advancement. Selected damage/carry capacity uses the same rules as the simulation. Incoming Dispatch units respect population reserved by existing production queues.
+
+Verification: 13 focused Dispatch/council simulation tests and the Chromium charter/council interaction pass; lint/typecheck and production build pass. Full unit suite: 56/56 tests pass across 12 files. Existing content versions are rejected with an unsupported-version message; migration remains future work.
+
+Next: research/upgrade queues and refunds; dependable queued/attack-move/patrol/guard/heal/deploy commands; trade/treasure/neutral objectives. Online work follows offline certification.

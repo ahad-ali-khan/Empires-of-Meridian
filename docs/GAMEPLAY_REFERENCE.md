@@ -1,6 +1,6 @@
 # Gameplay content reference
 
-Generated from validated content version 4. Do not edit by hand.
+Generated from validated content version 5. Do not edit by hand.
 
 ## Units
 
@@ -63,6 +63,26 @@ Generated from validated content version 4. Do not edit by hand.
 | estate        | Orchard Estate   |   3 |
 | fishery       | Shore Fishery    |   1 |
 | landmark      | Meridian Beacon  |   3 |
+
+## Council advancement
+
+| Council              | Age | Immediate delivery                                 | Permanent effect                                       |
+| -------------------- | --: | -------------------------------------------------- | ------------------------------------------------------ |
+| Harvest Council      |   2 | 120 provisions · 80 timber                         | Workers gather 25% faster.                             |
+| Charter Guard        |   2 | 50 provisions · 50 coin · 50 metal                 | Military units deal 10% more damage.                   |
+| Coastal Trade        |   2 | 60 timber · 120 coin                               | Markets produce 20% more Coin.                         |
+| Guild Council        |   3 | 90 provisions · 90 timber · 90 coin                | Unit training progresses 25% faster.                   |
+| Bastion Council      |   3 | 80 timber · 140 metal                              | Buildings take 15% less damage.                        |
+| Field Command        |   3 | 80 provisions · 80 coin · 80 metal                 | Military units deal 10% more damage.                   |
+| Industrial Guilds    |   4 | 100 provisions · 120 timber · 140 coin · 100 metal | Unit training and construction progress twice as fast. |
+| Industrial Logistics |   4 | 180 provisions · 100 timber · 80 coin · 80 metal   | Workers carry 50% more resources.                      |
+| Artillery Board      |   4 | 60 provisions · 60 timber · 120 coin · 180 metal   | Artillery deals 20% more damage.                       |
+
+Advancement requires a completed central hall and pauses without one. Only one council can be chosen for each advancement. Repeated identical modifiers are not stacked. Different modifiers add within their rate group; military and artillery groups apply in order, then building damage resistance, with integer rounding at each damage stage.
+
+- Age 2: 30s; 500 provisions · 300 timber.
+- Age 3: 30s; 700 provisions · 400 timber · 250 coin · 150 metal.
+- Age 4: 30s; 900 provisions · 600 timber · 500 coin · 400 metal.
 
 ## Dispatches
 

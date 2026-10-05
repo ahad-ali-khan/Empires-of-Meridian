@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './match.css';
 import type {Command, Difficulty, MatchConfig, PlayerId, WorkerResponse} from '../../../../packages/protocol/src/index';
-import {placementReason, type MatchSnapshot} from '../../../../packages/sim/src/index';
+import {placementReason, evaluatedAttackDamage, type MatchSnapshot} from '../../../../packages/sim/src/index';
 import {wallSpans, wallPlacementReason} from '../../../../packages/sim/src/walls';
 import {
   buildings,
@@ -9,6 +9,10 @@ import {
   unitById,
   dispatches,
   dispatchDescription,
+  councilChoices,
+  councilModifiers,
+  advancements,
+  councilRate,
   units,
   sightFor,
   garrisonCapacity,
@@ -647,7 +651,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
               <small>
                 Sight {sightFor(one.kind, p?.age ?? 1)} ·{' '}
                 {one.damage > 0
-                  ? `Attack ${one.damage}`
+                  ? `Attack ${snapshot ? evaluatedAttackDamage(snapshot, one, one.damage) : one.damage}`
                   : one.category === 'resource'
                     ? `${Math.ceil(one.amount / 100)} remaining`
                     : ''}
@@ -670,7 +674,11 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                       provisions: 'Forager',
                     } as Record<string, string>
                   )[one.resourceKind ?? ''] ?? 'Worker'}{' '}
-                  · capacity 10 per resource
+                  · capacity{' '}
+                  {Math.trunc(
+                    (10 * councilRate(snapshot?.players[(one.owner || 1) - 1]?.modifiers ?? [], 'carry')) / 10000,
+                  )}{' '}
+                  per resource
                 </small>
               )}
               {Object.entries(one.carry)
@@ -783,43 +791,63 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         <button onClick={() => setDebug(!debug)}>Debug</button>
         {p?.advancing && (
           <div className="advancement">
-            Advancing · {Math.ceil(p.advancing.remaining / 20)}s
+            {p.advancing.waiting ??
+              `${councilChoices.find((c) => c.id === p.advancing!.councilId)?.name} · ${Math.ceil(p.advancing.remaining / 20)}s`}
             <progress max={p.advancing.total} value={p.advancing.total - p.advancing.remaining} />
           </div>
         )}
-        {p?.age === 1 && !p.advancing && (
-          <button
-            disabled={p.resources.provisions < 50000 || p.resources.timber < 30000}
-            onClick={() => send({type: 'advance', councilId: 'harvest-council'})}
-          >
-            Classical Age<small>500 provisions · 300 timber</small>
-          </button>
+        {p && p.age < 4 && !p.advancing && (
+          <details className="dispatch-panel council-panel">
+            <summary>Advance to {ages[p.age]} Age</summary>
+            {councilChoices
+              .filter((c) => c.age === p.age + 1)
+              .map((choice) => {
+                const advancement = advancements.find((a) => a.age === choice.age)!;
+                const hall = entities.find(
+                  (e) => e.owner === 1 && e.kind === 'hall' && e.hp > 0 && e.progress === 10000,
+                );
+                const affordable = Object.entries(advancement.cost).every(
+                  ([kind, amount]) => p.resources[kind as keyof typeof p.resources] >= amount,
+                );
+                const costText = Object.entries(advancement.cost)
+                  .filter(([, n]) => n > 0)
+                  .map(([kind, n]) => `${n / 100} ${kind}`)
+                  .join(' · ');
+                const deliveryText = Object.entries(choice.delivery)
+                  .filter(([, n]) => n > 0)
+                  .map(([kind, n]) => `${n / 100} ${kind}`)
+                  .join(' · ');
+                return (
+                  <button
+                    key={choice.id}
+                    disabled={!hall || !affordable}
+                    title={
+                      !hall
+                        ? 'A completed central hall is required.'
+                        : !affordable
+                          ? 'Not enough resources.'
+                          : councilModifiers[choice.modifier].description
+                    }
+                    onClick={() => send({type: 'advance', councilId: choice.id})}
+                  >
+                    {choice.name}
+                    <small>
+                      {costText} · {advancement.ticks / 20}s
+                    </small>
+                    <small>Immediate delivery: {deliveryText}</small>
+                    <small>Permanent: {councilModifiers[choice.modifier].description}</small>
+                  </button>
+                );
+              })}
+          </details>
         )}
-        {p?.age === 2 && !p.advancing && (
-          <button
-            disabled={
-              p.resources.provisions < 70000 ||
-              p.resources.timber < 40000 ||
-              p.resources.coin < 25000 ||
-              p.resources.metal < 15000
-            }
-            onClick={() => send({type: 'advance', councilId: 'field-command'})}
-          >
-            Medieval Age<small>700 provisions · 400 timber · 250 coin · 150 metal</small>
-          </button>
-        )}
-        {p?.age === 3 && !p.advancing && (
-          <button
-            disabled={
-              p.resources.provisions < 90000 ||
-              p.resources.timber < 60000 ||
-              p.resources.coin < 50000 ||
-              p.resources.metal < 40000
-            }
-            onClick={() => send({type: 'advance', councilId: 'industrial-guilds'})}
-          >
-            Industrial Age<small>900 provisions · 600 timber · 500 coin · 400 metal</small>
-          </button>
+        {p && p.modifiers.length > 0 && (
+          <details className="dispatch-panel">
+            <summary>Council bonuses</summary>
+            {p.modifiers.map((id) => (
+              <p key={id}>{councilModifiers[id]?.description ?? id}</p>
+            ))}
+          </details>
         )}
         <details className="dispatch-panel">
           <summary>Dispatch charter · {p?.tokens ?? 0} tokens</summary>

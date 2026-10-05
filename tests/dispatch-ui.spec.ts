@@ -17,6 +17,7 @@ test('Dispatch charter exposes real contents, transit and refundable cancellatio
     aiCount: 0,
   });
   state.players[0].tokens = 5;
+  state.players[0].resources = {provisions: 100000, timber: 100000, coin: 100000, metal: 100000};
   const save = serializeSave(state);
   await page.goto('/');
   await page.evaluate(async (envelope) => {
@@ -38,7 +39,7 @@ test('Dispatch charter exposes real contents, transit and refundable cancellatio
   await page.getByRole('button', {name: 'Back', exact: true}).click();
   await page.getByRole('button', {name: 'Continue autosave'}).click();
   await page.getByText('Dispatch charter · 5 tokens').click();
-  const charter = page.locator('.dispatch-panel');
+  const charter = page.locator('.dispatch-panel').filter({hasText: 'Dispatch charter'});
   await expect(charter.getByRole('button')).toHaveCount(24);
   const workers = charter.getByRole('button', {name: /Worker Party · 1 tokens/});
   await expect(workers).toContainText('2 Frontier Worker');
@@ -47,5 +48,13 @@ test('Dispatch charter exposes real contents, transit and refundable cancellatio
   await charter.getByRole('button', {name: 'Cancel · refund 1 tokens'}).click();
   await expect(charter.locator('.dispatch-transit')).toHaveCount(0);
   await expect(charter.locator('summary')).toContainText('5 tokens');
+  await page.getByText('Advance to Classical Age', {exact: true}).click();
+  const councils = page.locator('.council-panel');
+  await expect(councils.getByRole('button')).toHaveCount(3);
+  await expect(councils.getByRole('button', {name: /Charter Guard/})).toContainText(
+    'Military units deal 10% more damage',
+  );
+  await councils.getByRole('button', {name: /Charter Guard/}).click();
+  await expect(page.locator('.advancement')).toContainText('Charter Guard');
   expect(errors).toEqual([]);
 });

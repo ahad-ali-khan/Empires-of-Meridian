@@ -1,4 +1,12 @@
-import {buildingById, councilChoices, dispatches, unitById, garrisonCapacity} from '../../content/src/index';
+import {
+  buildingById,
+  councilChoices,
+  dispatches,
+  unitById,
+  garrisonCapacity,
+  councilRate,
+  advancements,
+} from '../../content/src/index';
 import {CONTENT_VERSION} from '../../content/src/index';
 import {visibleTo, updateVision, observedEntities, FOG_CELL} from './visibility';
 import {coastAt, landAt, seedHash, inlandWater, terrainHeight} from './terrain';
@@ -28,6 +36,7 @@ export interface QueueItem {
   kind: string;
   remaining: number;
   total: number;
+  progressRemainder?: number;
 }
 export interface Entity {
   id: number;
@@ -96,7 +105,7 @@ export interface Entity {
 }
 export interface PlayerState {
   id: PlayerId;
-  advancing?: {councilId: string; remaining: number; total: number};
+  advancing?: {councilId: string; remaining: number; total: number; waiting?: string};
   resources: Resources;
   age: 1 | 2 | 3 | 4;
   renown: number;
@@ -805,15 +814,19 @@ function applyCommand(state: MatchState, c: Command) {
   if (c.type === 'advance') {
     const next = p.age + 1;
     const choice = councilChoices.find((x) => x.id === c.councilId && x.age === next);
-    const cost =
-      next === 2
-        ? {provisions: 50000, timber: 30000, coin: 0, metal: 0}
-        : next === 3
-          ? {provisions: 70000, timber: 40000, coin: 25000, metal: 15000}
-          : {provisions: 90000, timber: 60000, coin: 50000, metal: 40000};
-    if (!choice || next > 4 || p.advancing || !canPay(p, cost)) return;
-    pay(p, cost);
-    p.advancing = {councilId: choice.id, remaining: 600, total: 600};
+    const advancement = advancements.find((x) => x.age === next);
+    const hall = state.entities.find((e) => e.owner === p.id && e.kind === 'hall' && e.hp > 0 && e.progress === 10000);
+    if (!choice || !advancement || !hall || p.advancing || !canPay(p, advancement.cost)) {
+      event(
+        state,
+        'Cannot advance: a completed hall, legal council choice and resources are required.',
+        'rejected',
+        p.id,
+      );
+      return;
+    }
+    pay(p, advancement.cost);
+    p.advancing = {councilId: choice.id, remaining: advancement.ticks, total: advancement.ticks};
     event(state, 'Age advancement started — 30 seconds.', 'age', p.id);
   }
   if (c.type === 'dispatch') {
@@ -1254,7 +1267,7 @@ function updateUnit(state: MatchState, e: Entity) {
     if (!approachWork(state, e, b)) return;
     e.working = true;
     const d = buildingById.get(b.kind)!;
-    const buildMultiplier = p?.modifiers.includes('industrial-production') ? 2 : 1;
+    const buildMultiplier = councilRate(p?.modifiers ?? [], 'construction') / 10000;
     if (b.progress < 10000) {
       b.progress = Math.min(10000, b.progress + buildMultiplier * Math.max(8, Math.trunc(10000 / d.buildTicks)));
       b.hp = Math.max(1, Math.trunc((b.maxHp * b.progress) / 10000));
@@ -1295,13 +1308,17 @@ function updateUnit(state: MatchState, e: Entity) {
     if (!approachWork(state, e, target)) return;
     e.working = true;
     const kind = resourceKind(target),
-      rate = p?.modifiers.includes('gather') ? 15 : 12,
-      take = Math.max(0, Math.min(rate, 1000 - (e.carry[kind] ?? 0), target.kind === 'farm' ? rate : target.amount));
+      rate = Math.trunc((12 * councilRate(p?.modifiers ?? [], 'gather')) / 10000),
+      capacity = Math.trunc((1000 * councilRate(p?.modifiers ?? [], 'carry')) / 10000),
+      take = Math.max(
+        0,
+        Math.min(rate, capacity - (e.carry[kind] ?? 0), target.kind === 'farm' ? rate : target.amount),
+      );
     e.activeResource = kind;
     target.lastWorked = state.tick;
     if (target.kind !== 'farm') target.amount -= take;
     e.carry[kind] = (e.carry[kind] ?? 0) + take;
-    if ((e.carry[kind] ?? 0) >= 1000 || (target.kind !== 'farm' && target.amount <= 0)) {
+    if ((e.carry[kind] ?? 0) >= capacity || (target.kind !== 'farm' && target.amount <= 0)) {
       e.task = 'carry';
       e.resourceTargetId = target.id;
       const h = homeFor(state, e);
@@ -1376,7 +1393,25 @@ function updateUnit(state: MatchState, e: Entity) {
     }
   }
 }
+export function evaluatedAttackDamage(
+  state: Pick<MatchState, 'players'>,
+  source: Entity | undefined,
+  amount: number,
+  target?: Entity,
+) {
+  const attacker = source?.owner ? state.players[source.owner - 1] : undefined;
+  const defender = target?.owner ? state.players[target.owner - 1] : undefined;
+  if (source?.category === 'unit' && source.kind !== 'worker' && attacker) {
+    const artillery = unitById.get(source.kind)?.tags.includes('artillery');
+    amount = Math.max(1, Math.trunc((amount * councilRate(attacker.modifiers, 'military')) / 10000));
+    if (artillery) amount = Math.max(1, Math.trunc((amount * councilRate(attacker.modifiers, 'artillery')) / 10000));
+  }
+  if (target?.category === 'building' && defender)
+    amount = Math.max(1, Math.trunc((amount * councilRate(defender.modifiers, 'buildingDamage')) / 10000));
+  return amount;
+}
 function damage(state: MatchState, source: Entity | undefined, target: Entity, amount: number) {
+  amount = evaluatedAttackDamage(state, source, amount, target);
   target.hp = Math.max(0, target.hp - amount);
   if (
     target.hp > 0 &&
@@ -1506,7 +1541,9 @@ function updateBuildings(state: MatchState, b: Entity) {
   if (!b.queue.length) return;
   const q = b.queue[0];
   const owner = state.players[b.owner - 1];
-  q.remaining -= owner?.modifiers.includes('industrial-production') ? 2 : 1;
+  const progress = (q.progressRemainder ?? 0) + councilRate(owner?.modifiers ?? [], 'production');
+  q.remaining -= Math.trunc(progress / 10000);
+  q.progressRemainder = progress % 10000;
   if (q.remaining <= 0) {
     const d = unitById.get(q.kind)!;
     const candidates = SLOT_DIRECTIONS.map(([dx, dz]) => ({
@@ -1680,13 +1717,8 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
   if (barracks && barracks.queue.length < 2 && canPay(p, unitById.get(choice)!.cost))
     issued.push({...base, sequence: next(), type: 'train', buildingId: barracks.id, unitId: choice});
   if (p.age < 4 && !p.advancing && workers.length >= 8) {
-    const cost =
-      p.age === 1
-        ? {provisions: 50000, timber: 30000, coin: 0, metal: 0}
-        : p.age === 2
-          ? {provisions: 70000, timber: 40000, coin: 25000, metal: 15000}
-          : {provisions: 90000, timber: 60000, coin: 50000, metal: 40000};
-    if (canPay(p, cost))
+    const advancement = advancements.find((x) => x.age === p.age + 1);
+    if (advancement && canPay(p, advancement.cost))
       issued.push({
         ...base,
         sequence: next(),
@@ -1855,7 +1887,15 @@ function updateDispatches(state: MatchState, p: PlayerState) {
       .filter((e) => e.owner === p.id && e.hp > 0 && e.category === 'unit')
       .reduce((total, e) => total + e.population, 0);
     if (!sites.length) reason = 'Waiting for a completed central hall or fort.';
-    else if (livePopulation + population > p.populationCap) reason = 'Waiting for population space.';
+    else if (
+      livePopulation +
+        state.entities
+          .filter((e) => e.owner === p.id && e.hp > 0 && e.category === 'building')
+          .reduce((total, e) => total + e.queue.reduce((n, q) => n + unitById.get(q.kind)!.population, 0), 0) +
+        population >
+      p.populationCap
+    )
+      reason = 'Waiting for population space.';
     const spawns: {kind: string; x: number; z: number; site: Entity}[] = [];
     if (!reason)
       for (const delivery of card.units)
@@ -1909,7 +1949,12 @@ function updateDispatches(state: MatchState, p: PlayerState) {
         created.destZ = spawn.site.rally.z;
       }
     }
-    p.population = livePopulation + population;
+    p.population =
+      livePopulation +
+      population +
+      state.entities
+        .filter((e) => e.owner === p.id && e.hp > 0 && e.category === 'building')
+        .reduce((total, e) => total + e.queue.reduce((n, q) => n + unitById.get(q.kind)!.population, 0), 0);
     p.stats.dispatches++;
     p.usedDispatches.push(card.id);
     p.pendingDispatches.splice(p.pendingDispatches.indexOf(pending), 1);
@@ -1920,11 +1965,15 @@ function passiveSystems(state: MatchState) {
   for (const p of state.players) {
     updateDispatches(state, p);
     if (p.advancing) {
-      p.advancing.remaining--;
+      const hall = state.entities.find(
+        (e) => e.owner === p.id && e.kind === 'hall' && e.hp > 0 && e.progress === 10000,
+      );
+      p.advancing.waiting = hall ? undefined : 'Waiting for a completed central hall.';
+      if (hall) p.advancing.remaining--;
       if (p.advancing.remaining <= 0) {
         const choice = councilChoices.find((c) => c.id === p.advancing!.councilId)!;
         p.age = choice.age as 2 | 3 | 4;
-        p.modifiers.push(choice.modifier);
+        if (!p.modifiers.includes(choice.modifier)) p.modifiers.push(choice.modifier);
         for (const k of Object.keys(choice.delivery) as ResourceKind[]) p.resources[k] += choice.delivery[k];
         p.advancing = undefined;
         event(state, `Player ${p.id} advanced to age ${p.age}`, 'age', p.id);
@@ -1941,7 +1990,8 @@ function passiveSystems(state: MatchState) {
     const markets = state.entities.filter(
       (e) => e.owner === p.id && e.kind === 'market' && e.hp > 0 && e.progress === 10000,
     ).length;
-    if (markets && state.tick % 100 === 0) p.resources.coin += markets * 100;
+    if (markets && state.tick % 100 === 0)
+      p.resources.coin += Math.trunc((markets * 100 * councilRate(p.modifiers, 'market')) / 10000);
   }
 }
 function updateAnimals(state: MatchState) {

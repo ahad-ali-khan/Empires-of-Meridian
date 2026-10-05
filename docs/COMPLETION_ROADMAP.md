@@ -28,3 +28,10 @@ This increment is not completion of the whole Dispatch product. Custom deck auth
 ## Release gates still open
 
 Full milestone gates in `data.md` and the accepted Milestone 1 plan remain authoritative. No stage is complete from passing unit tests alone. Hardware FPS, remote networking, complete human playthroughs and production operations require recorded evidence.
+
+## Verified increments
+
+- Dispatch lifecycle: commit `e8598a5`; six new simulation regressions, full 49-test unit suite, lint/build and live Chromium interaction passed.
+- Council progression: choice UI for all three advances, nine council choices, validated shared costs/rates, real gathering/training/market/carrying/combat effects, integer fractional production, hall-dependent advancement and inspectable active bonuses. Regression coverage includes timed delivery, missing hall, mid-training replay/save parity, actual market payouts and projectile damage for either player. Dispatch capacity also counts already-reserved training population.
+
+No networking, chat, campaigns, additional factions, or whole-game completion is claimed by these increments.
