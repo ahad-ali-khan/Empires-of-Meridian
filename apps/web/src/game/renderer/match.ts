@@ -6,6 +6,8 @@ import type {Clip} from '../../../../../packages/asset-tools/src/actors';
 import {placementReason, type MatchSnapshot} from '../../../../../packages/sim/src/index';
 import {buildingById, productionName} from '../../../../../packages/content/src/index';
 import {applyCondition, effectsTime} from '../../../../../packages/asset-tools/src/presentation';
+import {prepareBuildingView} from './building-view';
+import {halfBounds} from '../../../../../packages/sim/src/spatial';
 import {Ragdoll, MachineWreck} from './ragdoll';
 import {coastAt, terrainHeight, landAt, cliffAt} from '../../../../../packages/sim/src/terrain';
 import {createEnvironment} from './environment';
@@ -318,9 +320,9 @@ export class MatchRenderer {
     for (const e of this.terrainBuildings) {
       if (e.category !== 'building' || e.hp <= 0) continue;
       if (e.wallAxis) continue;
-      const f = buildingById.get(e.kind)?.footprint ?? [3, 3],
-        dx = Math.abs(x - e.x / 256) - f[0],
-        dz = Math.abs(z - e.z / 256) - f[1],
+      const [hx, hz] = halfBounds(e),
+        dx = Math.abs(x - e.x / 256) - hx / 256,
+        dz = Math.abs(z - e.z / 256) - hz / 256,
         d = Math.max(dx, dz);
       if (d < 2) {
         const base = terrainHeight(e.x / 256, e.z / 256, this.worldSize, this.seed);
@@ -702,6 +704,8 @@ export class MatchRenderer {
                 this.placementQuarter,
               ));
         this.ghostFootprint?.material.color.set(invalid ? '#eb6556' : '#7ee8b4');
+        const edge = this.ghost.getObjectByName('placementEdge') as T.LineLoop | undefined;
+        (edge?.material as T.LineBasicMaterial | undefined)?.color.set(invalid ? '#eb6556' : '#7ee8b4');
       }
     }
     const d = this.down;
@@ -795,7 +799,7 @@ export class MatchRenderer {
     if (this.ghost) {
       this.scene.remove(this.ghost);
       this.ghost.traverse((o) => {
-        if (!(o instanceof T.Mesh)) return;
+        if (!(o instanceof T.Mesh) && !(o instanceof T.Line)) return;
         o.geometry.dispose();
         const materials = Array.isArray(o.material) ? o.material : [o.material];
         materials.forEach((m) => m.dispose());
@@ -823,6 +827,18 @@ export class MatchRenderer {
       this.ghostFootprint.position.y = 0.04;
       this.ghost.add(this.ghostFootprint);
       if (kind !== 'wall') {
+        const edge = new T.LineLoop(
+          new T.BufferGeometry().setFromPoints([
+            new T.Vector3(-f[0], 0.1, -f[1]),
+            new T.Vector3(f[0], 0.1, -f[1]),
+            new T.Vector3(f[0], 0.1, f[1]),
+            new T.Vector3(-f[0], 0.1, f[1]),
+          ]),
+          new T.LineBasicMaterial({color: '#7ee8b4', depthTest: false}),
+        );
+        edge.name = 'placementEdge';
+        edge.renderOrder = 9;
+        this.ghost.add(edge);
         const definition = buildingById.get(kind)!;
         let preview: T.Group;
         try {
@@ -830,6 +846,7 @@ export class MatchRenderer {
         } catch {
           preview = buildAsset(definition.model as AssetKind);
         }
+        preview = prepareBuildingView(preview, kind) ?? preview;
         preview.traverse((o) => {
           if (!(o instanceof T.Mesh)) return;
           const materials = (Array.isArray(o.material) ? o.material : [o.material]).map((source) => {
@@ -1003,6 +1020,7 @@ export class MatchRenderer {
           } catch {
             proto = buildAsset(e.model as AssetKind);
           }
+          if (e.category === 'building' && !e.wallAxis) proto = prepareBuildingView(proto, e.kind) ?? proto;
           this.templates.set(key, proto);
         }
         const model = proto.clone();

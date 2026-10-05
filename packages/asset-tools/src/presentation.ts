@@ -98,7 +98,7 @@ export function applyCondition(root: T.Group, kind: string, state: Condition) {
         );
     for (let y = 0.7; y < h; y += 0.95)
       for (const z of [-1, 1]) {
-        box(scaffold, size.x * 0.96, 0.08, Math.min(0.43, size.z * 0.16), 0, y, z * size.z * 0.47, C.wood);
+        box(scaffold, size.x * 0.96, 0.08, Math.min(0.43, size.z * 0.16), 0, y, z * size.z * 0.43, C.wood);
         beam(
           scaffold,
           [-size.x * 0.47, y - 0.65, z * size.z * 0.47],

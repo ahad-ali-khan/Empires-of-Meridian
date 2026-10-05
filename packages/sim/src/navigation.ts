@@ -132,19 +132,6 @@ export function clearSegment(state: MatchState, ax: number, az: number, bx: numb
       return false;
   return true;
 }
-function trafficBlocked(state: MatchState, e: Entity, x: number, z: number) {
-  if (e.kind !== 'worker') return false;
-  return state.entities.some(
-    (other) =>
-      other.id !== e.id &&
-      other.hp > 0 &&
-      !other.garrisonedIn &&
-      other.category === 'unit' &&
-      other.kind !== 'worker' &&
-      other.task !== 'move' &&
-      Math.max(Math.abs(x - other.x), Math.abs(z - other.z)) < 220,
-  );
-}
 export function approachRange(e: Entity) {
   const f = buildingById.get(e.kind)?.footprint;
   return f ? Math.ceil(Math.max(...f) * 256) + 250 : e.category === 'resource' ? 620 : 260;
@@ -160,18 +147,7 @@ export function findPath(state: MatchState, e: Entity, x: number, z: number): [n
   const base = navigation(state, e.owner),
     n = base.n,
     grid = base.grid;
-  const clear = (ax: number, az: number, bx: number, bz: number) => {
-    if (!clearSegment(state, ax, az, bx, bz, e.owner)) return false;
-    if (e.kind === 'worker') {
-      const steps = Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(bz - az)) / 100);
-      for (let i = 1; i <= steps; i++)
-        if (
-          trafficBlocked(state, e, Math.trunc(ax + ((bx - ax) * i) / steps), Math.trunc(az + ((bz - az) * i) / steps))
-        )
-          return false;
-    }
-    return true;
-  };
+  const clear = (ax: number, az: number, bx: number, bz: number) => clearSegment(state, ax, az, bx, bz, e.owner);
   if (clear(e.x, e.z, x, z)) return [[x, z]];
   const sx = Math.floor(e.x / CELL),
     sz = Math.floor(e.z / CELL),
@@ -246,13 +222,7 @@ export function findPath(state: MatchState, e: Entity, x: number, z: number): [n
         nz = cz + dz;
       if (nx < 1 || nz < 1 || nx >= n - 1 || nz >= n - 1) continue;
       const next = nz * n + nx;
-      if (
-        closed[next] ||
-        grid[next] ||
-        trafficBlocked(state, e, nx * CELL + 128, nz * CELL + 128) ||
-        (dx && dz && (grid[cz * n + nx] || grid[nz * n + cx]))
-      )
-        continue;
+      if (closed[next] || grid[next] || (dx && dz && (grid[cz * n + nx] || grid[nz * n + cx]))) continue;
       const score = cost[id] + (dx && dz ? 14 : 10);
       if (score < cost[next]) {
         cost[next] = score;
@@ -279,4 +249,21 @@ export function findPath(state: MatchState, e: Entity, x: number, z: number): [n
     i = j + 1;
   }
   return smooth;
+}
+
+const pathWork = new WeakMap<MatchState, {tick: number; searches: number}>();
+export function navigationWork(state: MatchState) {
+  return pathWork.get(state)?.tick === state.tick ? pathWork.get(state)!.searches : 0;
+}
+// Tick budgets use the stable simulation entity order, never elapsed time.
+// Deferred actors retain their route and retry on later ticks.
+export function requestPath(state: MatchState, e: Entity, x: number, z: number) {
+  let work = pathWork.get(state);
+  if (!work || work.tick !== state.tick) {
+    work = {tick: state.tick, searches: 0};
+    pathWork.set(state, work);
+  }
+  if (work.searches >= 8) return undefined;
+  work.searches++;
+  return findPath(state, e, x, z);
 }

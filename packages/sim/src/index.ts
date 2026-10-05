@@ -17,7 +17,14 @@ import {
 import {CONTENT_VERSION} from '../../content/src/index';
 import {visibleTo, updateVision, observedEntities, FOG_CELL} from './visibility';
 import {coastAt, landAt, seedHash, inlandWater, terrainHeight} from './terrain';
-import {findPath, blocked, approachRange, invalidateNavigation, nearestPassable, reachableGround} from './navigation';
+import {
+  blocked,
+  approachRange,
+  invalidateNavigation,
+  nearestPassable,
+  reachableGround,
+  requestPath,
+} from './navigation';
 import {wallSpans, inWall, wallPlacementReason} from './walls';
 import {edgeDistance, halfBounds, perimeterPoint} from './spatial';
 import {chooseIntent, DEFAULT_AI_POLICY, featuresFor, teacherIntent} from './ai-policy';
@@ -1371,13 +1378,16 @@ function moveToward(state: MatchState, e: Entity, x: number, z: number) {
     e.progressX = e.x;
     e.progressZ = e.z;
   }
-  const key = `${Math.floor(x / 128)},${Math.floor(z / 128)}`;
+  const key = `${Math.floor(x / 512)},${Math.floor(z / 512)}`;
   if (e.pathGoal !== key || !e.path || (!e.path.length && state.tick % 10 === e.id % 10)) {
-    e.path = findPath(state, e, x, z);
-    e.pathGoal = key;
-    if (e.path.length) e.avoidTraffic = false;
+    const path = requestPath(state, e, x, z);
+    if (path !== undefined) {
+      e.path = path;
+      e.pathGoal = key;
+      if (path.length) e.avoidTraffic = false;
+    }
   }
-  const point = e.path[0];
+  const point = e.path?.[0];
   if (!point) {
     e.moving = false;
     return;
@@ -1463,7 +1473,7 @@ function moveToward(state: MatchState, e: Entity, x: number, z: number) {
   e.z = nz;
   e.trafficWait = 0;
   e.moving = true;
-  if (m <= e.speed) e.path.shift();
+  if (m <= e.speed) e.path?.shift();
 }
 function homeFor(state: MatchState, e: Entity) {
   return state.entities
@@ -1532,8 +1542,14 @@ const SLOT_DIRECTIONS = [
 ];
 function nearestPerimeter(state: MatchState, e: Entity, target: Entity, gap = 120) {
   return Array.from({length: 8}, (_, slot) => perimeterPoint(target, slot, gap))
-    .filter((p) => !blocked(state, p.x, p.z, e.owner) && !occupied(state, e, p.x, p.z))
-    .sort((a, b) => dist(e, a) - dist(e, b) || a.z - b.z || a.x - b.x)[0];
+    .filter((p) => !blocked(state, p.x, p.z, e.owner))
+    .sort(
+      (a, b) =>
+        Number(occupied(state, e, a.x, a.z)) - Number(occupied(state, e, b.x, b.z)) ||
+        dist(e, a) - dist(e, b) ||
+        a.z - b.z ||
+        a.x - b.x,
+    )[0];
 }
 function approachWork(state: MatchState, e: Entity, target: Entity) {
   const peers = state.entities.filter(
@@ -1614,6 +1630,7 @@ function occupied(state: MatchState, e: Entity, x: number, z: number) {
     for (let dx = -1; dx <= 1; dx++)
       for (const other of bins.get(Math.floor(x / 512) + dx + ',' + (Math.floor(z / 512) + dz)) ?? []) {
         if (other.id === e.id || other.garrisonedIn || other.hp <= 0) continue;
+        if (other.owner === e.owner && other.moving && !other.working && !e.working) continue;
         const d = Math.max(Math.abs(x - other.x), Math.abs(z - other.z)),
           old = Math.max(Math.abs(e.x - other.x), Math.abs(e.z - other.z));
         // Units are soft traffic, not navigation blockers.  Keep only a small
@@ -2124,14 +2141,10 @@ function updateUnit(state: MatchState, e: Entity) {
       e.task = 'idle';
       return;
     }
-    const drop = nearestPerimeter(state, e, h);
-    if (!drop) {
-      e.task = 'idle';
-      event(state, 'No accessible drop-off edge.', 'rejected', e.owner as PlayerId);
-      return;
-    }
-    if (Math.max(Math.abs(e.x - drop.x), Math.abs(e.z - drop.z)) > 70) {
-      moveToward(state, e, drop.x, drop.z);
+    if (edgeDistance(e, h) > 200) {
+      const drop = nearestPerimeter(state, e, h);
+      if (drop) moveToward(state, e, drop.x, drop.z);
+      // Temporary congestion is not a failed harvesting order.
       return;
     }
     depositCargo(state, e);
