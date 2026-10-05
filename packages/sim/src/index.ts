@@ -6,6 +6,9 @@ import {
   garrisonCapacity,
   councilRate,
   advancements,
+  technologies,
+  technologyById,
+  productionName,
 } from '../../content/src/index';
 import {CONTENT_VERSION} from '../../content/src/index';
 import {visibleTo, updateVision, observedEntities, FOG_CELL} from './visibility';
@@ -33,6 +36,7 @@ export const MAP_VERSION = 5;
 type EntityCategory = 'unit' | 'building' | 'resource' | 'projectile' | 'treasure' | 'animal';
 type Task = 'idle' | 'move' | 'gather' | 'carry' | 'build' | 'attack' | 'dead' | 'garrison';
 export interface QueueItem {
+  id?: number;
   kind: string;
   remaining: number;
   total: number;
@@ -114,6 +118,7 @@ export interface PlayerState {
   populationCap: number;
   resigned: boolean;
   modifiers: string[];
+  researched: string[];
   usedDispatches: string[];
   pendingDispatches: {id: string; departureTick: number; arrivalTick: number; waiting?: string}[];
   stats: {
@@ -220,6 +225,7 @@ function player(id: PlayerId, populationCap: number): PlayerState {
     populationCap: Math.min(20, populationCap),
     resigned: false,
     modifiers: [],
+    researched: [],
     usedDispatches: [],
     pendingDispatches: [],
     stats: {gathered: emptyResources(), unitsLost: 0, unitsKilled: 0, idleWorkerTicks: 0, dispatches: 0, commands: 0},
@@ -234,6 +240,10 @@ function addEntity(state: MatchState, entity: Omit<Entity, 'id'>) {
   return complete;
 }
 function unit(state: MatchState, owner: PlayerId, kind: string, x: number, z: number) {
+  for (const id of state.players[owner - 1]?.researched ?? []) {
+    const upgrade = technologyById.get(id)?.upgrade;
+    if (upgrade?.from === kind) kind = upgrade.to;
+  }
   const d = unitById.get(kind);
   if (!d) throw new Error(`Unknown unit ${kind}`);
   return addEntity(state, {
@@ -676,8 +686,52 @@ function applyCommand(state: MatchState, c: Command) {
     )
       return;
     pay(p, d.cost);
-    b.queue.push({kind: d.id, remaining: d.trainTicks, total: d.trainTicks});
+    b.queue.push({id: c.sequence, kind: d.id, remaining: d.trainTicks, total: d.trainTicks});
     p.population += d.population;
+  }
+  if (c.type === 'research') {
+    const b = owned(state, c.buildingId, p.id),
+      t = technologyById.get(c.technologyId);
+    const reason =
+      !b || b.category !== 'building' || b.progress < 10000
+        ? 'Select a completed owned research building.'
+        : !t || t.building !== b.kind
+          ? 'This building cannot research that technology.'
+          : t.age > p.age
+            ? 'Advance to the required age first.'
+            : p.researched.includes(t.id) ||
+                state.entities.some(
+                  (e) => e.owner === p.id && e.hp > 0 && e.queue.some((q) => q.kind === `research:${t.id}`),
+                )
+              ? 'Technology already completed or queued.'
+              : t.prerequisites.some((id) => !p.researched.includes(id))
+                ? 'Complete prerequisite research first.'
+                : !canPay(p, t.cost)
+                  ? 'Not enough resources.'
+                  : undefined;
+    if (reason || !b || !t) {
+      event(state, reason ?? 'Invalid research.', 'rejected', p.id);
+      return;
+    }
+    pay(p, t.cost);
+    b.queue.push({id: c.sequence, kind: `research:${t.id}`, remaining: t.ticks, total: t.ticks});
+    event(state, `${t.name} queued`, 'research', p.id);
+  }
+  if (c.type === 'cancel-production') {
+    const b = owned(state, c.buildingId, p.id);
+    const index = b?.queue.findIndex((q) => q.id === c.queueId) ?? -1;
+    if (!b || index < 0) return;
+    const q = b.queue[index],
+      research = q.kind.startsWith('research:');
+    const definition = research ? technologyById.get(q.kind.slice(9)) : unitById.get(q.kind);
+    if (!definition) return;
+    // Full refund before work begins; half thereafter, including a blocked exit.
+    const refund = q.remaining === q.total && !q.progressRemainder ? 10000 : 5000;
+    for (const kind of Object.keys(definition.cost) as ResourceKind[])
+      p.resources[kind] += Math.trunc((definition.cost[kind] * refund) / 10000);
+    if (!research) p.population = Math.max(0, p.population - (unitById.get(q.kind)?.population ?? 0));
+    b.queue.splice(index, 1);
+    event(state, `${productionName(q.kind)} cancelled; ${refund / 100}% refunded`, 'production-cancelled', p.id);
   }
   if (c.type === 'build') {
     const d = buildingById.get(c.buildingId);
@@ -1462,6 +1516,13 @@ function damage(state: MatchState, source: Entity | undefined, target: Entity, a
     }
     const victim = target.owner ? state.players[target.owner - 1] : undefined,
       attacker = source?.owner ? state.players[source.owner - 1] : undefined;
+    if (target.category === 'building' && victim) {
+      victim.population = Math.max(
+        0,
+        victim.population - target.queue.reduce((n, q) => n + (unitById.get(q.kind)?.population ?? 0), 0),
+      );
+      target.queue = [];
+    }
     if (target.category === 'unit' && victim) {
       victim.population = Math.max(0, victim.population - target.population);
       victim.stats.unitsLost++;
@@ -1541,10 +1602,37 @@ function updateBuildings(state: MatchState, b: Entity) {
   if (!b.queue.length) return;
   const q = b.queue[0];
   const owner = state.players[b.owner - 1];
-  const progress = (q.progressRemainder ?? 0) + councilRate(owner?.modifiers ?? [], 'production');
-  q.remaining -= Math.trunc(progress / 10000);
+  const research = q.kind.startsWith('research:');
+  const progress = (q.progressRemainder ?? 0) + (research ? 10000 : councilRate(owner?.modifiers ?? [], 'production'));
+  q.remaining = Math.max(0, q.remaining - Math.trunc(progress / 10000));
   q.progressRemainder = progress % 10000;
   if (q.remaining <= 0) {
+    if (research) {
+      const t = technologyById.get(q.kind.slice(9));
+      if (t && owner && !owner.researched.includes(t.id)) {
+        owner.researched.push(t.id);
+        owner.modifiers.push(t.modifier);
+        if (t.upgrade) {
+          const d = unitById.get(t.upgrade.to)!;
+          for (const e of state.entities.filter(
+            (e) => e.owner === owner.id && e.category === 'unit' && e.hp > 0 && e.kind === t.upgrade!.from,
+          )) {
+            e.hp = Math.max(1, Math.trunc((e.hp * d.hp) / e.maxHp));
+            e.maxHp = d.hp;
+            e.kind = d.id;
+            e.model = d.model;
+            e.damage = d.damage;
+            e.range = d.range;
+            e.speed = d.speed;
+            e.attackAt = undefined;
+            e.attackStart = undefined;
+          }
+        }
+        event(state, `${t.name} research complete`, 'research-complete', owner.id);
+      }
+      b.queue.shift();
+      return;
+    }
     const d = unitById.get(q.kind)!;
     const candidates = SLOT_DIRECTIONS.map(([dx, dz]) => ({
       x: b.x + Math.trunc((dx * (approachRange(b) + 400)) / 1024),
@@ -1574,7 +1662,7 @@ function updateBuildings(state: MatchState, b: Entity) {
       }
     }
     b.queue.shift();
-    event(state, `${d.name} trained`, 'train', b.owner as PlayerId);
+    event(state, `${unitById.get(created.kind)!.name} trained`, 'train', b.owner as PlayerId);
   }
 }
 function nearest(state: MatchState, from: Entity, pred: (e: Entity) => boolean) {
@@ -1716,6 +1804,24 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
         : 'militia';
   if (barracks && barracks.queue.length < 2 && canPay(p, unitById.get(choice)!.cost))
     issued.push({...base, sequence: next(), type: 'train', buildingId: barracks.id, unitId: choice});
+  const researchSite = mine.filter((e) => e.category === 'building' && e.progress === 10000 && !e.queue.length);
+  const technology = technologies.find(
+    (t) =>
+      t.age <= p.age &&
+      !p.researched.includes(t.id) &&
+      t.prerequisites.every((id) => p.researched.includes(id)) &&
+      canPay(p, t.cost) &&
+      researchSite.some((b) => b.kind === t.building) &&
+      !mine.some((b) => b.queue.some((q) => q.kind === `research:${t.id}`)),
+  );
+  if (technology && workers.length >= 8)
+    issued.push({
+      ...base,
+      sequence: next(),
+      type: 'research',
+      buildingId: researchSite.find((b) => b.kind === technology.building)!.id,
+      technologyId: technology.id,
+    });
   if (p.age < 4 && !p.advancing && workers.length >= 8) {
     const advancement = advancements.find((x) => x.age === p.age + 1);
     if (advancement && canPay(p, advancement.cost))
@@ -1891,7 +1997,7 @@ function updateDispatches(state: MatchState, p: PlayerState) {
       livePopulation +
         state.entities
           .filter((e) => e.owner === p.id && e.hp > 0 && e.category === 'building')
-          .reduce((total, e) => total + e.queue.reduce((n, q) => n + unitById.get(q.kind)!.population, 0), 0) +
+          .reduce((total, e) => total + e.queue.reduce((n, q) => n + (unitById.get(q.kind)?.population ?? 0), 0), 0) +
         population >
       p.populationCap
     )
@@ -1954,7 +2060,7 @@ function updateDispatches(state: MatchState, p: PlayerState) {
       population +
       state.entities
         .filter((e) => e.owner === p.id && e.hp > 0 && e.category === 'building')
-        .reduce((total, e) => total + e.queue.reduce((n, q) => n + unitById.get(q.kind)!.population, 0), 0);
+        .reduce((total, e) => total + e.queue.reduce((n, q) => n + (unitById.get(q.kind)?.population ?? 0), 0), 0);
     p.stats.dispatches++;
     p.usedDispatches.push(card.id);
     p.pendingDispatches.splice(p.pendingDispatches.indexOf(pending), 1);
@@ -2120,7 +2226,9 @@ export function createSnapshot(state: MatchState, viewer: PlayerId, includeCheck
     tick: state.tick,
     winner: state.winner,
     players: structuredClone(
-      state.players.map((p) => (p.id === viewer ? p : {...p, pendingDispatches: [], usedDispatches: []})),
+      state.players.map((p) =>
+        p.id === viewer ? p : {...p, pendingDispatches: [], usedDispatches: [], researched: []},
+      ),
     ),
     entities: structuredClone(
       observedEntities(state, viewer).map((e) => ({

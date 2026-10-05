@@ -4,7 +4,7 @@ import {buildAsset, animateAsset, type AssetKind} from '../../../../../packages/
 import {setFoliageTime} from '../../../../../packages/asset-tools/src/nature';
 import type {Clip} from '../../../../../packages/asset-tools/src/actors';
 import {placementReason, type MatchSnapshot} from '../../../../../packages/sim/src/index';
-import {buildingById, unitById} from '../../../../../packages/content/src/index';
+import {buildingById, productionName} from '../../../../../packages/content/src/index';
 import {applyCondition, effectsTime} from '../../../../../packages/asset-tools/src/presentation';
 import {Ragdoll, MachineWreck} from './ragdoll';
 import {coastAt, terrainHeight, landAt, cliffAt} from '../../../../../packages/sim/src/terrain';
@@ -837,7 +837,7 @@ export class MatchRenderer {
   }
   private rotatePlacement(delta: number) {
     if (!this.ghost || this.placing === 'wall') return;
-    this.placementQuarter = (((this.placementQuarter + delta) % 4 + 4) % 4) as 0 | 1 | 2 | 3;
+    this.placementQuarter = ((((this.placementQuarter + delta) % 4) + 4) % 4) as 0 | 1 | 2 | 3;
     this.ghost.rotation.y = this.placementQuarter * (Math.PI / 2);
   }
   setSelected(ids: Set<number>) {
@@ -1214,7 +1214,7 @@ export class MatchRenderer {
         v.label.replaceChildren();
         const title = document.createElement('span');
         title.textContent = queue
-          ? (unitById.get(queue.kind)?.name ?? queue.kind) + ' · ' + Math.ceil(queue.remaining / 20) + 's'
+          ? productionName(queue.kind) + ' · ' + Math.ceil(queue.remaining / 20) + 's'
           : 'Constructing · ' + Math.floor(e.progress / 100) + '%';
         const progress = document.createElement('progress');
         progress.max = queue?.total ?? 10000;
@@ -1222,7 +1222,7 @@ export class MatchRenderer {
         v.label.append(title, progress);
         if (e.queue.length > 1) {
           const list = document.createElement('small');
-          list.textContent = e.queue.map((q, i) => `${i + 1}. ${unitById.get(q.kind)?.name ?? q.kind}`).join(' · ');
+          list.textContent = e.queue.map((q, i) => `${i + 1}. ${productionName(q.kind)}`).join(' · ');
           v.label.append(list);
         }
       }

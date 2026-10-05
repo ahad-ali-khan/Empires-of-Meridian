@@ -12,19 +12,19 @@ Empires of Meridian is an original real-time strategy game built around a determ
 
 ## The game at a glance
 
-| System | What is in the slice |
-| --- | --- |
-| World | Seeded temperate-coast maps with forests, farms, mines, berry patches, fish grounds, wildlife, shorelines, and validated starting areas |
-| Economy | Provisions, Timber, Coin, and Metal with gathering, carrying, drop-off, depletion, farms, fishing, hunting, and storage buildings |
-| Settlement | Central halls, houses, production buildings, farms, walls, gates, forts, trade structures, rally points, and construction states |
-| Military | Foot soldiers, mounted units, siege artillery, formations, stances, projectiles, fog, garrisoning, and deterministic combat resolution |
-| Progression | Stone, Classical, and Medieval ages with research, production queues, council choices, Renown, and Dispatch events |
-| Opposition | Relaxed, Standard, and Ruthless modes using the same legal-information AI architecture with different decision budgets |
+| System       | What is in the slice                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| World        | Seeded temperate-coast maps with forests, farms, mines, berry patches, fish grounds, wildlife, shorelines, and validated starting areas            |
+| Economy      | Provisions, Timber, Coin, and Metal with gathering, carrying, drop-off, depletion, farms, fishing, hunting, and storage buildings                  |
+| Settlement   | Central halls, houses, production buildings, farms, walls, gates, forts, trade structures, rally points, and construction states                   |
+| Military     | Foot soldiers, mounted units, siege artillery, formations, stances, projectiles, fog, garrisoning, and deterministic combat resolution             |
+| Progression  | Stone, Classical, and Medieval ages with research, production queues, council choices, Renown, and Dispatch events                                 |
+| Opposition   | Relaxed, Standard, and Ruthless modes using the same legal-information AI architecture with different decision budgets                             |
 | Presentation | Three.js world rendering, procedural assets, animation states, field lens controls, generated audio cues, minimap, and readable selection feedback |
 
 ## A closer look
 
-The map is built to reward readable decisions. A worker can be selected, sent to a specific resource, carry the result back to a valid drop-off, and continue the local resource loop as nearby nodes are depleted. Production buildings expose their queue and rally point directly in the world, while walls, gates, and age changes make the settlement legible from a distance.
+The map is built to reward readable decisions. A worker can be selected, sent to a specific resource, carry the result back to a valid drop-off, and continue the local resource loop as nearby nodes are depleted. Production buildings expose their queue and rally point directly in the world. Seven timed technologies improve the settlement, including a real militia-to-swordsman upgrade; queued research and training can be cancelled with an explicit refund. Walls, gates, and age changes make the settlement legible from a distance.
 
 <table>
   <tr>

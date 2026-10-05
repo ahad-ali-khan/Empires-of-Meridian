@@ -46,3 +46,10 @@ Council continuation: content version 5 introduces validated advancement costs/d
 Verification: 13 focused Dispatch/council simulation tests and the Chromium charter/council interaction pass; lint/typecheck and production build pass. Full unit suite: 56/56 tests pass across 12 files. Existing content versions are rejected with an unsupported-version message; migration remains future work.
 
 Next: research/upgrade queues and refunds; dependable queued/attack-move/patrol/guard/heal/deploy commands; trade/treasure/neutral objectives. Online work follows offline certification.
+
+
+Research continuation (content version 6): seven schema-validated technologies with ages, sites, costs, durations and prerequisites. Unit training and research use a shared timed building queue. Jobs have stable command-sequence IDs so cancellation cannot accidentally remove a shifted queue item. Unstarted jobs refund 100%; started jobs refund 50%. Unit cancellation and building destruction release reserved population; destruction gives no refund. Research modifiers affect real economy/training/combat values. Forged Blades upgrades living and subsequently created militia to swordsmen, preserving health fraction and existing orders. AI requests research through the same validator. World labels and selected-building panels show both job types, cancellation refunds, availability and effects.
+
+Verification: full unit suite 65/65 across 13 files; nine research/production regressions cover completion, prerequisites, legality, cancellation, destruction, upgrades and mid-research save/restore checksum parity. Chromium research/production and Dispatch/council flows pass without page errors. Lint, strict app/package typecheck and production build pass; existing bundle-size advisory remains. Old content-version saves are rejected; no migration is available. Full offline match certification, hardware performance, multiplayer and full-game completion remain open.
+
+Next: dependable contextual/queued commands and support abilities, then trade/treasures/neutral objectives and offline certification.

@@ -4,6 +4,8 @@ import type {Command, Difficulty, MatchConfig, PlayerId, WorkerResponse} from '.
 import {placementReason, evaluatedAttackDamage, type MatchSnapshot} from '../../../../packages/sim/src/index';
 import {wallSpans, wallPlacementReason} from '../../../../packages/sim/src/walls';
 import {
+  technologies,
+  productionName,
   buildings,
   buildingById,
   unitById,
@@ -692,9 +694,14 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                 <div className="production-list">
                   {one.queue.map((q, i) => (
                     <div key={i}>
-                      {unitById.get(q.kind)?.name}
+                      {productionName(q.kind)}
                       <progress value={q.total - q.remaining} max={q.total} />
                       <small>{Math.ceil(q.remaining / 20)}s remaining</small>
+                      {one.owner === 1 && q.id !== undefined && (
+                        <button onClick={() => send({type: 'cancel-production', buildingId: one.id, queueId: q.id!})}>
+                          Cancel · {q.remaining === q.total && !q.progressRemainder ? '100' : '50'}% refund
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -728,6 +735,47 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
               ) : null}
             </>
           )}
+          {one?.owner === 1 &&
+            one.category === 'building' &&
+            technologies
+              .filter((t) => t.building === one.kind)
+              .map((t) => {
+                const completed = p?.researched.includes(t.id);
+                const queued = snapshot?.entities.some(
+                  (e) => e.owner === 1 && e.queue.some((q) => q.kind === `research:${t.id}`),
+                );
+                const reason = completed
+                  ? 'Completed'
+                  : queued
+                    ? 'Queued'
+                    : one.progress < 10000
+                      ? 'Finish construction first'
+                      : !p || t.age > p.age
+                        ? `Requires ${ages[t.age - 1]} age`
+                        : t.prerequisites.some((id) => !p.researched.includes(id))
+                          ? 'Requires prerequisite research'
+                          : Object.entries(t.cost).some(([k, n]) => p.resources[k as keyof typeof p.resources] < n)
+                            ? 'Not enough resources'
+                            : '';
+                return (
+                  <button
+                    key={t.id}
+                    disabled={!!reason}
+                    title={councilModifiers[t.modifier].description}
+                    onClick={() => send({type: 'research', buildingId: one.id, technologyId: t.id})}
+                  >
+                    Research {t.name}
+                    <small>{councilModifiers[t.modifier].description}</small>
+                    <small>
+                      {reason ||
+                        `${t.ticks / 20}s · ${Object.entries(t.cost)
+                          .filter(([, n]) => n > 0)
+                          .map(([k, n]) => `${n / 100} ${k}`)
+                          .join(' · ')}`}
+                    </small>
+                  </button>
+                );
+              })}
           {trainable.map((u) => (
             <button
               key={u.id}
@@ -843,7 +891,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         )}
         {p && p.modifiers.length > 0 && (
           <details className="dispatch-panel">
-            <summary>Council bonuses</summary>
+            <summary>Settlement bonuses</summary>
             {p.modifiers.map((id) => (
               <p key={id}>{councilModifiers[id]?.description ?? id}</p>
             ))}

@@ -180,6 +180,7 @@ export function audioForSimulationEvent(kind: string, text: string) {
   if (kind === 'combat') return 'combat.attack' as const;
   if (kind === 'build' && value.includes('completed')) return 'construction.complete' as const;
   if (kind === 'build') return 'construction.hammer' as const;
+  if (kind === 'research-complete') return 'production.complete' as const;
   if (kind === 'train') return 'production.complete' as const;
   if (kind === 'age' && value.includes('advanced')) return 'research.age.complete' as const;
   if (kind === 'age') return 'research.age.start' as const;

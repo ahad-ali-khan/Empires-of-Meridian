@@ -8,6 +8,7 @@ import {
   councilChoices,
   councilModifiers,
   advancements,
+  technologies,
 } from '../packages/content/src/index.ts';
 const rows = (items: {id: string; name: string; age: number}[]) =>
   items.map((x) => `| ${x.id} | ${x.name} | ${x.age} |`).join('\n');
@@ -50,6 +51,22 @@ ${advancements
         .filter(([, n]) => n > 0)
         .map(([k, n]) => `${n / 100} ${k}`)
         .join(' · ')}.`,
+  )
+  .join('\n')}
+
+## Research and production
+
+Research and unit training share a first-in, first-out building queue. Costs are reserved at ordering. Cancel a job before it starts for a full refund; after work starts, half its cost is refunded. Cancellation releases reserved population. Destroying a building loses its queue without refunds. Research is once per player; prerequisites must be completed before ordering. Training bonuses do not accelerate research. Council and research rate bonuses add within each modifier group.
+
+| Technology | Building | Age | Time | Cost | Effect | Prerequisites |
+| --- | --- | ---: | ---: | --- | --- | --- |
+${technologies
+  .map(
+    (t) =>
+      `| ${t.name} | ${t.building} | ${t.age} | ${t.ticks / 20}s | ${Object.entries(t.cost)
+        .filter(([, n]) => n > 0)
+        .map(([k, n]) => `${n / 100} ${k}`)
+        .join(' · ')} | ${councilModifiers[t.modifier].description} | ${t.prerequisites.join(', ') || 'None'} |`,
   )
   .join('\n')}
 

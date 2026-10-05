@@ -1,6 +1,6 @@
 # Gameplay content reference
 
-Generated from validated content version 5. Do not edit by hand.
+Generated from validated content version 6. Do not edit by hand.
 
 ## Units
 
@@ -83,6 +83,20 @@ Advancement requires a completed central hall and pauses without one. Only one c
 - Age 2: 30s; 500 provisions · 300 timber.
 - Age 3: 30s; 700 provisions · 400 timber · 250 coin · 150 metal.
 - Age 4: 30s; 900 provisions · 600 timber · 500 coin · 400 metal.
+
+## Research and production
+
+Research and unit training share a first-in, first-out building queue. Costs are reserved at ordering. Cancel a job before it starts for a full refund; after work starts, half its cost is refunded. Cancellation releases reserved population. Destroying a building loses its queue without refunds. Research is once per player; prerequisites must be completed before ordering. Training bonuses do not accelerate research. Council and research rate bonuses add within each modifier group.
+
+| Technology         | Building | Age | Time | Cost                            | Effect                                                                            | Prerequisites  |
+| ------------------ | -------- | --: | ---: | ------------------------------- | --------------------------------------------------------------------------------- | -------------- |
+| Forged Blades      | barracks |   2 |  25s | 100 provisions · 50 metal       | Existing and future Militia become Swordsmen, preserving their health percentage. | None           |
+| Improved Tools     | hall     |   1 |  20s | 50 provisions · 50 timber       | Workers gather 25% faster.                                                        | None           |
+| Carrying Packs     | hall     |   2 |  20s | 75 provisions · 50 timber       | Workers carry 50% more resources.                                                 | improved-tools |
+| Formation Drills   | barracks |   2 |  25s | 100 provisions · 50 coin        | Unit training progresses 25% faster.                                              | None           |
+| Tempered Arms      | barracks |   2 |  25s | 50 timber · 50 coin · 50 metal  | Military units deal 10% more damage.                                              | None           |
+| Reinforced Masonry | hall     |   3 |  30s | 100 timber · 50 coin · 50 metal | Buildings take 15% less damage.                                                   | None           |
+| Trade Ledgers      | market   |   2 |  25s | 75 timber · 75 coin             | Markets produce 20% more Coin.                                                    | None           |
 
 ## Dispatches
 

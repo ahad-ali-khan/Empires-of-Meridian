@@ -66,6 +66,24 @@ export type Command =
       tick: number;
       playerId: PlayerId;
       sequence: number;
+      type: 'research';
+      buildingId: number;
+      technologyId: string;
+    }
+  | {
+      v: 1;
+      tick: number;
+      playerId: PlayerId;
+      sequence: number;
+      type: 'cancel-production';
+      buildingId: number;
+      queueId: number;
+    }
+  | {
+      v: 1;
+      tick: number;
+      playerId: PlayerId;
+      sequence: number;
       type: 'build';
       workerIds: number[];
       buildingId: string;

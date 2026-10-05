@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ResourceKind, Resources} from '../../protocol/src/index';
 
-export const CONTENT_VERSION = 5;
+export const CONTENT_VERSION = 6;
 const bundle = z.object({
   provisions: z.number().int().nonnegative(),
   timber: z.number().int().nonnegative(),
@@ -850,6 +850,13 @@ const councilModifierSchema = z.object({
   market: z.number().int().default(10000),
 });
 export const councilModifiers = z.record(z.string(), councilModifierSchema).parse({
+  'research-blades': {description: 'Existing and future Militia become Swordsmen, preserving their health percentage.'},
+  'research-tools': {description: 'Workers gather 25% faster.', gather: 12500},
+  'research-packs': {description: 'Workers carry 50% more resources.', carry: 15000},
+  'research-drills': {description: 'Unit training progresses 25% faster.', production: 12500},
+  'research-arms': {description: 'Military units deal 10% more damage.', military: 11000},
+  'research-masonry': {description: 'Buildings take 15% less damage.', buildingDamage: 8500},
+  'research-commerce': {description: 'Markets produce 20% more Coin.', market: 12000},
   gather: {description: 'Workers gather 25% faster.', gather: 12500},
   military: {description: 'Military units deal 10% more damage.', military: 11000},
   market: {description: 'Markets produce 20% more Coin.', market: 12000},
@@ -1004,4 +1011,111 @@ export function sightFor(kind: string, age = 1) {
 }
 export function garrisonCapacity(kind: string, age: number) {
   return kind === 'hall' ? 10 + (age - 1) * 5 : kind === 'fort' ? 20 + (age - 1) * 5 : 0;
+}
+
+// Research shares the authoritative modifier evaluator with council bonuses.
+export const technologies = z
+  .array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      age: z.number().int().min(1).max(4),
+      building: z.string(),
+      ticks: z.number().int().positive(),
+      cost: bundle,
+      prerequisites: z.array(z.string()),
+      modifier: z.string(),
+      upgrade: z.object({from: z.string(), to: z.string()}).optional(),
+    }),
+  )
+  .parse([
+    {
+      id: 'forged-blades',
+      name: 'Forged Blades',
+      age: 2,
+      building: 'barracks',
+      ticks: 500,
+      cost: cost(10000, 0, 0, 5000),
+      prerequisites: [],
+      modifier: 'research-blades',
+      upgrade: {from: 'militia', to: 'swordsman'},
+    },
+    {
+      id: 'improved-tools',
+      name: 'Improved Tools',
+      age: 1,
+      building: 'hall',
+      ticks: 400,
+      cost: cost(5000, 5000),
+      prerequisites: [],
+      modifier: 'research-tools',
+    },
+    {
+      id: 'carrying-packs',
+      name: 'Carrying Packs',
+      age: 2,
+      building: 'hall',
+      ticks: 400,
+      cost: cost(7500, 5000),
+      prerequisites: ['improved-tools'],
+      modifier: 'research-packs',
+    },
+    {
+      id: 'formation-drills',
+      name: 'Formation Drills',
+      age: 2,
+      building: 'barracks',
+      ticks: 500,
+      cost: cost(10000, 0, 5000),
+      prerequisites: [],
+      modifier: 'research-drills',
+    },
+    {
+      id: 'tempered-arms',
+      name: 'Tempered Arms',
+      age: 2,
+      building: 'barracks',
+      ticks: 500,
+      cost: cost(0, 5000, 5000, 5000),
+      prerequisites: [],
+      modifier: 'research-arms',
+    },
+    {
+      id: 'reinforced-masonry',
+      name: 'Reinforced Masonry',
+      age: 3,
+      building: 'hall',
+      ticks: 600,
+      cost: cost(0, 10000, 5000, 5000),
+      prerequisites: [],
+      modifier: 'research-masonry',
+    },
+    {
+      id: 'trade-ledgers',
+      name: 'Trade Ledgers',
+      age: 2,
+      building: 'market',
+      ticks: 500,
+      cost: cost(0, 7500, 7500),
+      prerequisites: [],
+      modifier: 'research-commerce',
+    },
+  ]);
+export const technologyById = new Map(technologies.map((t) => [t.id, t]));
+for (const t of technologies) {
+  if (
+    !buildingById.has(t.building) ||
+    !councilModifiers[t.modifier] ||
+    t.prerequisites.some((id) => !technologyById.has(id)) ||
+    (t.upgrade &&
+      (!unitById.has(t.upgrade.from) ||
+        !unitById.has(t.upgrade.to) ||
+        unitById.get(t.upgrade.from)!.population !== unitById.get(t.upgrade.to)!.population))
+  )
+    throw new Error(`Invalid technology ${t.id}`);
+}
+export function productionName(kind: string) {
+  return kind.startsWith('research:')
+    ? (technologyById.get(kind.slice(9))?.name ?? kind)
+    : (unitById.get(kind)?.name ?? kind);
 }

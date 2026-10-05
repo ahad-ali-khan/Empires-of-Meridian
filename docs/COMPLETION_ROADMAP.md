@@ -13,7 +13,7 @@ Scope: the original `data.md` plus accepted changes in the conversation. Four ag
 7. **Player tools:** compendium, deck builder, replay viewer/seeking, complete settings/hotkeys, localization and scenario editor.
 8. **Production release:** distinct audio performances and adaptive music; accessibility, hardware performance, online security, deployments, scaling, backups, observability, operations and complete campaign.
 
-## Current increment — Dispatch lifecycle
+## Delivered increment — Dispatch lifecycle
 
 Owner: content, protocol, deterministic simulation and match HUD.
 
@@ -33,5 +33,11 @@ Full milestone gates in `data.md` and the accepted Milestone 1 plan remain autho
 
 - Dispatch lifecycle: commit `e8598a5`; six new simulation regressions, full 49-test unit suite, lint/build and live Chromium interaction passed.
 - Council progression: choice UI for all three advances, nine council choices, validated shared costs/rates, real gathering/training/market/carrying/combat effects, integer fractional production, hall-dependent advancement and inspectable active bonuses. Regression coverage includes timed delivery, missing hall, mid-training replay/save parity, actual market payouts and projectile damage for either player. Dispatch capacity also counts already-reserved training population.
+
+- Research and production: seven validated technologies, shared timed building queues, prerequisite/age/ownership checks, duplicate prevention, full upfront reservation, cancellation refunds, reserved-population release, research completion bonuses, and real Forged Blades militia-to-swordsman conversion. AI orders research through the player command path. Research persists across save/load. Full unit suite and focused browser results are recorded in `PROJECT_STATE.md`.
+
+## Next increment — dependable contextual commands
+
+Audit and complete queued orders, attack-move, patrol, guard, support abilities and command feedback. Verify interruption/recovery and moving-target engagement with replayable tests before adding trade/treasure systems. Offline full-match, AI, cross-browser and hardware certification still precede online work.
 
 No networking, chat, campaigns, additional factions, or whole-game completion is claimed by these increments.
