@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ResourceKind, Resources} from '../../protocol/src/index';
 
-export const CONTENT_VERSION = 9;
+export const CONTENT_VERSION = 10;
 const bundle = z.object({
   provisions: z.number().int().nonnegative(),
   timber: z.number().int().nonnegative(),
@@ -529,7 +529,7 @@ export const buildings = buildingSchema.array().parse([
     buildTicks: 600,
     hp: 750,
     population: 0,
-    production: ['militia', 'spearman', 'archer', 'swordsman', 'shieldBearer', 'pikeman', 'crossbow'],
+    production: ['militia', 'spearman', 'archer', 'swordsman', 'shieldBearer', 'pikeman', 'crossbow', 'veteranRifle'],
     model: 'barracks',
     footprint: [3.9, 4.9],
   },
@@ -541,7 +541,7 @@ export const buildings = buildingSchema.array().parse([
     buildTicks: 650,
     hp: 720,
     population: 0,
-    production: ['lightRider', 'mountedScout', 'cavalry'],
+    production: ['lightRider', 'mountedScout', 'cavalry', 'dragoon', 'cuirassRider'],
     model: 'stable',
     footprint: [3.9, 4.9],
   },
@@ -625,7 +625,7 @@ export const buildings = buildingSchema.array().parse([
     buildTicks: 1200,
     hp: 2600,
     population: 0,
-    production: ['militia', 'spearman', 'swordsman', 'archer', 'crossbow'],
+    production: ['militia', 'spearman', 'swordsman', 'archer', 'crossbow', 'veteranRifle'],
     model: 'fort',
     footprint: [6.8, 6.8],
   },

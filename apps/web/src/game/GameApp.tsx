@@ -7,7 +7,13 @@ import {
   sitePayout,
   type MatchSnapshot,
 } from '../../../../packages/sim/src/index';
-import {wallSpans, wallPlacementReason} from '../../../../packages/sim/src/walls';
+import {
+  wallSpans,
+  wallPlacementReason,
+  snapWallEndpoint,
+  gateWallAt,
+  gateConversionReason,
+} from '../../../../packages/sim/src/walls';
 import {
   frontierRules,
   treasureById,
@@ -30,7 +36,14 @@ import {Showcase} from './renderer/showcase';
 import {Minimap} from './Minimap';
 import {MatchRenderer} from './renderer/match';
 import {getSave, putSave} from './sim/save-store';
-import {audioForSimulationEvent, playAudio, playVoice, voiceForSimulationEvent} from './audio';
+import {
+  audioForSimulationEvent,
+  playAudio,
+  playVoice,
+  voiceForSimulationEvent,
+  setWeatherAudio,
+  stopWeatherAudio,
+} from './audio';
 
 type Screen = 'menu' | 'setup' | 'game' | 'credits';
 type ClientCommand = Command extends infer C
@@ -146,9 +159,9 @@ export function GameApp() {
                 value={config.mapSize ?? 'medium'}
                 onChange={(e) => setConfig({...config, mapSize: e.target.value as MatchConfig['mapSize']})}
               >
-                <option value="small">Small · 192 × 192</option>
-                <option value="medium">Medium · 256 × 256</option>
-                <option value="large">Large · 320 × 320</option>
+                <option value="small">Small · 256 × 256</option>
+                <option value="medium">Medium · 320 × 320</option>
+                <option value="large">Large · 448 × 448</option>
               </select>
             </label>
             <label>
@@ -229,6 +242,11 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     [message, setMessage] = useState('Scout the coast and establish your economy.'),
     [tutorial, setTutorial] = useState(0),
     [debug, setDebug] = useState(false);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  useEffect(() => {
+    if (snapshot) setWeatherAudio(snapshot.map.weather, snapshot.tick, paused);
+  }, [paused]);
   const send = (command: ClientCommand) => {
     if (!snapshot || paused) return;
     if (command.type === 'stop') {
@@ -296,8 +314,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       const newShots = new Set(snap.projectiles.map((p) => p.id));
       for (const shot of snap.projectiles) if (!oldShots.has(shot.id)) playAudio('combat.projectile.launch');
       if (previous) for (const id of oldShots) if (!newShots.has(id)) playAudio('combat.projectile.impact');
-      if (previous?.map.weather !== snap.map.weather)
-        playAudio(snap.map.weather === 'rain' ? 'weather.rain' : 'weather.thunder');
+      setWeatherAudio(snap.map.weather, snap.tick, pausedRef.current);
       previous = snap;
     };
     w.onmessage = async (e: MessageEvent<WorkerResponse>) => {
@@ -317,6 +334,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       clearInterval(autosave);
       cancelAnimationFrame(frame);
       w.terminate();
+      stopWeatherAudio();
     };
   }, []);
   const orderAt = (x: number, z: number, targetId?: number, queued = false) => {
@@ -482,17 +500,9 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
             return;
           }
           if (buildMode.current === 'wall') {
-            for (const e of snapshotRef.current?.entities ?? []) {
-              if (e.owner !== 1 || !e.wallAxis) continue;
-              for (const sign of [-1, 1]) {
-                const sx = (e.x + (sign * e.wallAxis[0]) / 2) / 256,
-                  sz = (e.z + (sign * e.wallAxis[1]) / 2) / 256;
-                if (Math.hypot(x - sx, z - sz) < 1.5) {
-                  x = sx;
-                  z = sz;
-                }
-              }
-            }
+            const snapped = snapWallEndpoint(snapshotRef.current!, Math.round(x * 256), Math.round(z * 256), 1);
+            x = snapped.x / 256;
+            z = snapped.z / 256;
             if (!r.wallAnchor) {
               r.wallAnchor = {x, z};
               setMessage('Click a corner to build a wall line. Keep clicking to bend it; right-click finishes.');
@@ -521,6 +531,22 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
             } as never);
             r.wallAnchor = {x, z};
             return;
+          }
+          if (buildMode.current === 'gate' && snapshotRef.current) {
+            const wall = gateWallAt(snapshotRef.current, Math.round(x * 256), Math.round(z * 256), 1);
+            if (wall) {
+              const reason = gateConversionReason(wall, 1, snapshotRef.current.players[0].age, snapshotRef.current);
+              if (reason) {
+                setMessage(reason);
+                return;
+              }
+              sendRef.current({type: 'convert-gate', buildingId: wall.id});
+              if (!queued) {
+                buildMode.current = undefined;
+                r.setPlacement();
+              }
+              return;
+            }
           }
           const reason =
             snapshotRef.current &&

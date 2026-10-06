@@ -1,6 +1,6 @@
 # Gameplay content reference
 
-Generated from validated content version 9. Do not edit by hand.
+Generated from validated content version 10. Do not edit by hand.
 
 ## Units
 

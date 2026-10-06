@@ -2,7 +2,7 @@
 
 **A 3D browser RTS about building a frontier, protecting its people, and turning a coast into a league.**
 
-Empires of Meridian is an original real-time strategy game built around a deterministic simulation, a procedural temperate-coast world, and a presentation layer designed for readable play from the strategic view to the individual unit. The current build is an offline vertical slice: start a match, gather resources, construct a settlement, raise an army, advance through the first ages, and test the opposing AI.
+Empires of Meridian is an original real-time strategy game built around a deterministic simulation, a procedural temperate-coast world, and a presentation layer designed for readable play from the strategic view to the individual unit. The current build is an offline vertical slice: start a match, gather resources, construct a settlement, raise an army, advance from Stone through Industrial and test the opposing AI.
 
 <p align="center">
   <img src="docs/images/temperate-coast-map.png" alt="A temperate coast skirmish map with forests, farms, resource sites, settlements, and a navigable shoreline" width="100%">
@@ -12,17 +12,21 @@ Empires of Meridian is an original real-time strategy game built around a determ
 
 ## The game at a glance
 
-| System       | What is in the slice                                                                                                                               |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| World        | Seeded temperate-coast maps with forests, farms, mines, berry patches, fish grounds, wildlife, shorelines, and validated starting areas            |
-| Economy      | Provisions, Timber, Coin, and Metal with gathering, carrying, drop-off, depletion, farms, fishing, hunting, and storage buildings                  |
-| Settlement   | Central halls, houses, production buildings, farms, walls, gates, forts, trade structures, rally points, and construction states                   |
-| Military     | Foot soldiers, mounted units, siege artillery, formations, stances, projectiles, fog, garrisoning, and deterministic combat resolution             |
-| Progression  | Stone, Classical, and Medieval ages with research, production queues, council choices, Renown, and Dispatch events                                 |
-| Opposition   | Relaxed, Standard, and Ruthless modes using the same legal-information AI architecture with different decision budgets                             |
-| Presentation | Three.js world rendering, procedural assets, animation states, field lens controls, generated audio cues, minimap, and readable selection feedback |
+| System       | What is in the slice                                                                                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| World        | Seeded 256–448 unit temperate-coast maps with connected inland water, marshes, ridges, cliffs, fords, forests, fish grounds, wildlife, and validated starts           |
+| Economy      | Provisions, Timber, Coin, and Metal with gathering, carrying, drop-off, depletion, farms, fishing, hunting, and storage buildings                                     |
+| Settlement   | Central halls, houses, production buildings, farms, walls, gates, forts, trade structures, rally points, and construction states                                      |
+| Military     | Foot soldiers, mounted units, siege artillery, formations, stances, projectiles, fog, garrisoning, and deterministic combat resolution                                |
+| Progression  | Stone, Classical, Medieval, and Industrial ages with research, production queues, council choices, Renown, and Dispatch events                                        |
+| Opposition   | Relaxed, Standard, and Ruthless modes using a legal-information planner that balances army roles, responds to visible threats, and unlocks age-appropriate production |
+| Presentation | Three.js world rendering, procedural assets, animation states, field lens controls, generated audio cues, minimap, and readable selection feedback                    |
 
 ## A closer look
+
+Each seeded map selects from six terrain recipes, then shapes its coast, connected pools, tributaries, wet ground, crossing points, ridge lines, cliffs, and resource sites around navigable starting areas. Map size can be set to small, medium, or large. A deterministic weather cycle changes cloud cover, wind, rain, mist, surf and storm lightning; storm weather has thunder and no rain.
+
+Buildings have distinct forms and proportions, and age variants change their structure. Wall previews, snapping and finished segments share their geometry, including terrain adjustment and gate checks.
 
 The map is built to reward readable decisions. A worker can be selected, sent to a specific resource, carry the result back to a valid drop-off, and continue the local resource loop as nearby nodes are depleted. Production buildings expose their queue and rally point directly in the world. Seven timed technologies improve the settlement, including a real militia-to-swordsman upgrade; queued research and training can be cancelled with an explicit refund. Shift-place reserves building blueprints for ordered construction, with rotation and cancellation refunds. Shift-right-click queues orders; attack-move, patrol, guard, and medic healing provide deliberate battlefield control. Markets exchange resources and improve nearby work. Capturable trade sites pay a chosen resource while contested sites pause income. Explorers defeat treasure guards, claim caches, and can be rescued or returned after incapacitation. Walls, gates, and age changes make the settlement legible from a distance.
 
@@ -46,6 +50,8 @@ The Asset Forge is the visual reference shelf for the project. It exposes the cu
 </p>
 
 <p align="center"><sub>Asset Forge field atlas · civilian, infantry, mounted, artillery, and wildlife silhouettes</sub></p>
+
+Workers, soldiers and riders use pose-specific joint motion with two-axis elbow movement, planted work poses and authored weapon grips.
 
 The field cannon is a crew-operated unit rather than a decorative prop: its crew loads, rams, clears the muzzle, fires a visible round, and recovers from recoil. Workers, soldiers, mounted units, animals, buildings, and environmental resources use the same content and presentation mapping so the live match and Forge stay aligned.
 

@@ -4,10 +4,24 @@ import {landAt} from './terrain';
 import {inWall} from './walls';
 import {halfBounds} from './spatial';
 const CELL = 256;
+const DIRECTIONS = [
+  [0, -1],
+  [-1, 0],
+  [1, 0],
+  [0, 1],
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+  [1, 1],
+] as const;
+// Immutable terrain is shared by replays/matches using the same recipe. Keep
+// this derived cache bounded; dynamic building blockers always get a copy.
+const sharedTerrainGrids = new Map<string, Uint8Array>();
 const caches = new WeakMap<
   MatchState,
   Map<number, {key: string; grid: Uint8Array; n: number; tick: number; count: number}>
 >();
+const terrainGrids = new WeakMap<MatchState, {size: number; seed: number; grid: Uint8Array}>();
 export function invalidateNavigation(state: MatchState) {
   caches.delete(state);
 }
@@ -32,11 +46,35 @@ function navigation(state: MatchState, owner = 0) {
     cached.count = state.entities.length;
     return cached;
   }
-  const n = Math.ceil(state.map.size / CELL),
-    grid = new Uint8Array(n * n);
-  for (let z = 0; z < n; z++)
-    for (let x = 0; x < n; x++)
-      if (!landAt(x * CELL + 128, z * CELL + 128, state.map.size, state.map.seed)) grid[z * n + x] = 1;
+  const n = Math.ceil(state.map.size / CELL);
+  let terrain = terrainGrids.get(state);
+  if (!terrain || terrain.size !== state.map.size || terrain.seed !== state.map.seed) {
+    const terrainKey = `${state.map.seed}:${state.map.size}`;
+    let base = sharedTerrainGrids.get(terrainKey);
+    if (!base) {
+      base = new Uint8Array(n * n);
+      const {size, seed} = state.map;
+      for (let z = 0; z < n; z++) {
+        const pz = z * CELL;
+        for (let x = 0; x < n; x++) {
+          const px = x * CELL;
+          if (
+            !landAt(px + 128, pz + 128, size, seed) ||
+            !landAt(px + 16, pz + 16, size, seed) ||
+            !landAt(px + 240, pz + 16, size, seed) ||
+            !landAt(px + 16, pz + 240, size, seed) ||
+            !landAt(px + 240, pz + 240, size, seed)
+          )
+            base[z * n + x] = 1;
+        }
+      }
+      if (sharedTerrainGrids.size >= 8) sharedTerrainGrids.delete(sharedTerrainGrids.keys().next().value!);
+      sharedTerrainGrids.set(terrainKey, base);
+    }
+    terrain = {size: state.map.size, seed: state.map.seed, grid: base};
+    terrainGrids.set(state, terrain);
+  }
+  const grid = terrain.grid.slice();
   for (const e of buildings) {
     if (e.wallAxis) {
       const radius = Math.ceil(Math.max(Math.abs(e.wallAxis[0]), Math.abs(e.wallAxis[1])) / 2 / CELL) + 2;
@@ -81,23 +119,27 @@ export function reachableGround(state: MatchState, starts: {x: number; z: number
     tail = 1;
   queue[0] = start;
   cells[start] = 1;
+  const visit = (next: number) => {
+    if (grid[next] || cells[next]) return;
+    cells[next] = 1;
+    queue[tail++] = next;
+  };
   while (head < tail) {
     const id = queue[head++],
       x = id % n,
       z = Math.floor(id / n);
-    for (const next of [x > 0 ? id - 1 : -1, x < n - 1 ? id + 1 : -1, z > 0 ? id - n : -1, z < n - 1 ? id + n : -1]) {
-      if (next < 0 || grid[next] || cells[next]) continue;
-      cells[next] = 1;
-      queue[tail++] = next;
-    }
+    if (x > 0) visit(id - 1);
+    if (x < n - 1) visit(id + 1);
+    if (z > 0) visit(id - n);
+    if (z < n - 1) visit(id + n);
   }
   if (origins.some((p) => !p || !cells[Math.floor(p[1] / CELL) * n + Math.floor(p[0] / CELL)])) cells.fill(0);
   return {cells, n};
 }
 export function blocked(state: MatchState, x: number, z: number, owner = 0) {
-  if (!landAt(x, z, state.map.size, state.map.seed)) return true;
+  if (x < CELL || z < CELL || x >= state.map.size || z >= state.map.size - CELL) return true;
   const {grid, n} = navigation(state, owner);
-  return grid[Math.floor(z / CELL) * n + Math.floor(x / CELL)] === 1;
+  return grid[Math.floor(z / CELL) * n + Math.floor(x / CELL)] === 1 || !landAt(x, z, state.map.size, state.map.seed);
 }
 export function nearestPassable(
   state: MatchState,
@@ -197,7 +239,7 @@ export function findPath(state: MatchState, e: Entity, x: number, z: number): [n
   push(start);
   let best = start,
     visits = 0;
-  while (heap.length && visits++ < 14000) {
+  while (heap.length && visits++ < Math.min(90000, n * n)) {
     const id = pop();
     if (closed[id]) continue;
     closed[id] = 1;
@@ -208,16 +250,7 @@ export function findPath(state: MatchState, e: Entity, x: number, z: number): [n
     }
     const cx = id % n,
       cz = Math.floor(id / n);
-    for (const [dx, dz] of [
-      [0, -1],
-      [-1, 0],
-      [1, 0],
-      [0, 1],
-      [-1, -1],
-      [1, -1],
-      [-1, 1],
-      [1, 1],
-    ]) {
+    for (const [dx, dz] of DIRECTIONS) {
       const nx = cx + dx,
         nz = cz + dz;
       if (nx < 1 || nz < 1 || nx >= n - 1 || nz >= n - 1) continue;

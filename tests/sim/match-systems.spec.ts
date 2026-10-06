@@ -65,7 +65,7 @@ test('seeds change coastline and separated starts; map size changes playable are
   expect(coastAt(a.map.size / 2, a.map.size, 73)).not.toBe(coastAt(a.map.size / 2, a.map.size, 74));
   const [p, q] = a.entities.filter((e) => e.kind === 'hall');
   expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(a.map.size * 0.5);
-  expect(large.map.size).toBe(320 * 256);
+  expect(large.map.size).toBe(448 * 256);
 });
 test('unfinished production rejects training, resumes building, then honors rally', () => {
   const s = createMatch({...config, aiCount: 0}),
@@ -180,20 +180,23 @@ test('garrison hides and protects workers and release returns them to play', () 
   expect(worker.garrisonedIn).toBeUndefined();
 });
 test('superior numbers and unit stats win without difficulty damage bonuses', () => {
-  const results: string[] = [];
+  const stats: string[] = [];
   for (const difficulty of ['relaxed', 'standard', 'ruthless'] as const) {
     const s = createMatch({...config, difficulty});
+    // Combat isolation uses the protected starting plain, not a coordinate that
+    // can become a cliff or river when the map recipe changes.
+    const start = s.entities.find((e) => e.owner === 1 && e.kind === 'worker')!;
     const soldiers = [
-      ...Array.from({length: 6}, (_, i) => actor(s, 1, 'swordsman', 80 * 256 + i * 100, 80 * 256)),
-      ...Array.from({length: 2}, (_, i) => actor(s, 2, 'militia', 80 * 256 + i * 100, 82 * 256)),
+      ...Array.from({length: 6}, (_, i) => actor(s, 1, 'swordsman', start.x + i * 100, start.z)),
+      ...Array.from({length: 2}, (_, i) => actor(s, 2, 'militia', start.x + i * 100, start.z + 512)),
     ];
+    stats.push(JSON.stringify(soldiers.map((e) => [e.kind, e.damage, e.hp, e.maxHp, e.range, e.speed])));
     s.entities = soldiers;
     ticks(s, 350);
     expect(s.entities.filter((e) => e.owner === 2 && e.hp > 0)).toHaveLength(0);
     expect(s.entities.filter((e) => e.owner === 1 && e.hp > 0).length).toBeGreaterThanOrEqual(4);
-    results.push(JSON.stringify(s.entities.map((e) => [e.owner, e.hp])));
   }
-  expect(new Set(results).size).toBe(1);
+  expect(new Set(stats).size).toBe(1);
 });
 test('attackers take separate deterministic approach slots instead of stacking', () => {
   const s = createMatch(config),

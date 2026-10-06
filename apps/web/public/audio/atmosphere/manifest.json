@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "source": "Original layered noise synthesis in scripts/generate-weather-audio.mjs",
+  "license": "Original project assets; same terms as repository",
+  "sampleRate": 48000,
+  "channels": 2,
+  "assets": [
+    {
+      "id": "wind",
+      "file": "wind.wav",
+      "sha256": "2d1635de2d7aafdd0596d63740f36c37a90f4775b9bac97a0f60542706621d82",
+      "loop": true
+    },
+    {
+      "id": "rain",
+      "file": "rain.wav",
+      "sha256": "b4bfe6920b8c5e8c532a0ec24f2a06bcdd503b086365ed52172ddf0100c5bf5f",
+      "loop": true
+    },
+    {
+      "id": "surf",
+      "file": "surf.wav",
+      "sha256": "78a2839810a2307080fda8ceff5ac04fd494687b62178a7bdde6250b39bc3e64",
+      "loop": true
+    },
+    {
+      "id": "thunder",
+      "file": "thunder.wav",
+      "sha256": "23564cf3b919cdd4ef8546982aa4e4d9d7f7b65813b851f36e247a14a2c7e43f",
+      "loop": false
+    },
+    {
+      "id": "thunder_v2",
+      "file": "thunder_v2.wav",
+      "sha256": "1964f91378ed8883eb420cc9542d9dcc3b7c0443c4e317c8a70fb16effe8a537",
+      "loop": false
+    },
+    {
+      "id": "thunder_v3",
+      "file": "thunder_v3.wav",
+      "sha256": "b48f94ec55b3bf0417e1f03b3a7f3dee4b8b8ed733b80d2faca44b14dfdfc516",
+      "loop": false
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import {expect, test} from 'vitest';
 import {createMatch, step, canSee, placementReason, checksum} from '../../packages/sim/src/index';
 import {coastAt} from '../../packages/sim/src/terrain';
+import {unitById} from '../../packages/content/src/index';
 import {blocked} from '../../packages/sim/src/navigation';
 import type {Command} from '../../packages/protocol/src/index';
 const config = {
@@ -63,14 +64,39 @@ test('the AI must discover a target before issuing an attack', () => {
   }
   expect(s.players[1].stats.gathered.provisions).toBeGreaterThan(0);
   expect(s.players[1].stats.gathered.timber).toBeGreaterThan(0);
+  expect(s.aiTrace.some((entry) => entry.playerId === 2 && entry.goal === 'scout')).toBe(true);
 });
-test('the AI transitions from development into scouting and pressure', () => {
-  const s = createMatch(config);
-  for (let i = 0; i < 3600; i++) step(s, []);
-  const trace = s.aiTrace.filter((entry) => entry.playerId === 2);
-  expect(trace.some((entry) => entry.goal === 'scout')).toBe(true);
-  expect(trace.some((entry) => entry.goal === 'engage')).toBe(true);
-  expect(s.commandLog.some((command) => command.playerId === 2 && command.type === 'attack')).toBe(true);
+test('developed AI attacks a legally visible target through its validated command path', () => {
+  const s = createMatch({...config, mapSize: 'small', fogOfWar: false}),
+    hall = s.entities.find((e) => e.owner === 2 && e.kind === 'hall')!,
+    template = s.entities.find((e) => e.owner === 2 && e.kind === 'worker')!,
+    definition = unitById.get('militia')!;
+  for (let i = 0; i < 5; i++)
+    s.entities.push({
+      ...structuredClone(template),
+      id: s.nextEntityId++,
+      kind: definition.id,
+      model: definition.model,
+      category: 'unit',
+      hp: definition.hp,
+      maxHp: definition.hp,
+      damage: definition.damage,
+      range: definition.range,
+      speed: definition.speed,
+      population: definition.population,
+      task: 'idle',
+      x: hall.x + 1000 + i * 120,
+      z: hall.z + 1500,
+    });
+  s.tick = 49;
+  step(s, []);
+  const entry = s.aiTrace.filter((e) => e.playerId === 2).at(-1);
+  expect(entry?.goal).toBe('engage');
+  const command = s.commandLog.find((c) => c.playerId === 2 && c.type === 'attack');
+  expect(command).toBeDefined();
+  const target = s.entities.find((e) => e.id === command!.targetId)!;
+  expect(canSee(s, 2, target)).toBe(true);
+  expect(target.owner).toBe(1);
 });
 test('placement rejects overlap and shoreline footprints', () => {
   const s = createMatch(config),

@@ -78,6 +78,7 @@ test('group attack orders keep the live simulation advancing', async ({page}) =>
   await page.mouse.dblclick(point.x, point.y);
   await expect(page.locator('.selection-info')).toContainText('24');
   const before = await page.evaluate(() => (window as any).meridianInspect.snapshot().tick);
+  const frameBefore = await page.locator('.match-canvas canvas').screenshot();
   await click(target.id, 'right');
   await expect
     .poll(() =>
@@ -91,6 +92,10 @@ test('group attack orders keep the live simulation advancing', async ({page}) =>
   await expect
     .poll(() => page.evaluate(() => (window as any).meridianInspect.snapshot().tick), {timeout: 10000})
     .toBeGreaterThan(before + 40);
+  const frameAfter = await page.locator('.match-canvas canvas').screenshot();
+  expect(frameAfter.equals(frameBefore), 'rendered battlefield must keep updating while simulation advances').toBe(
+    false,
+  );
   expect(errors).toEqual([]);
 });
 

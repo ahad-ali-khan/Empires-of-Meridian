@@ -35,25 +35,57 @@ type Tone = {frequency: number; duration: number; type?: OscillatorType; gain?: 
 
 const tones: Record<AudioEventId, Tone[]> = {
   'ui.command.accepted': [{frequency: 520, duration: 0.055, gain: 0.035}],
-  'ui.command.move': [{frequency: 260, duration: 0.045, gain: 0.045}, {frequency: 330, duration: 0.06, gain: 0.035}],
-  'ui.command.gather': [{frequency: 210, duration: 0.06, gain: 0.045}, {frequency: 170, duration: 0.08, gain: 0.035}],
+  'ui.command.move': [
+    {frequency: 260, duration: 0.045, gain: 0.045},
+    {frequency: 330, duration: 0.06, gain: 0.035},
+  ],
+  'ui.command.gather': [
+    {frequency: 210, duration: 0.06, gain: 0.045},
+    {frequency: 170, duration: 0.08, gain: 0.035},
+  ],
   'ui.command.attack': [{frequency: 120, duration: 0.055, type: 'sawtooth', gain: 0.055, slide: 75}],
-  'ui.command.build': [{frequency: 300, duration: 0.05, gain: 0.045}, {frequency: 390, duration: 0.07, gain: 0.035}],
-  'ui.command.garrison': [{frequency: 180, duration: 0.07, gain: 0.04}, {frequency: 240, duration: 0.09, gain: 0.03}],
+  'ui.command.build': [
+    {frequency: 300, duration: 0.05, gain: 0.045},
+    {frequency: 390, duration: 0.07, gain: 0.035},
+  ],
+  'ui.command.garrison': [
+    {frequency: 180, duration: 0.07, gain: 0.04},
+    {frequency: 240, duration: 0.09, gain: 0.03},
+  ],
   'ui.command.rejected': [{frequency: 150, duration: 0.13, type: 'square', gain: 0.04, slide: 110}],
   'ui.selection': [{frequency: 360, duration: 0.045, gain: 0.025}],
   'ui.alert': [{frequency: 180, duration: 0.18, type: 'sawtooth', gain: 0.035, slide: 120}],
   'ui.build.preview': [{frequency: 240, duration: 0.04, gain: 0.02}],
-  'ui.build.placed': [{frequency: 280, duration: 0.08, gain: 0.035}, {frequency: 420, duration: 0.1, gain: 0.025}],
+  'ui.build.placed': [
+    {frequency: 280, duration: 0.08, gain: 0.035},
+    {frequency: 420, duration: 0.1, gain: 0.025},
+  ],
   'ui.queue.added': [{frequency: 410, duration: 0.05, gain: 0.025}],
   'resource.gather': [{frequency: 210, duration: 0.08, type: 'triangle', gain: 0.025}],
   'resource.depleted': [{frequency: 110, duration: 0.2, type: 'triangle', gain: 0.03, slide: 80}],
   'construction.hammer': [{frequency: 120, duration: 0.035, type: 'square', gain: 0.025}],
-  'construction.complete': [{frequency: 300, duration: 0.08, gain: 0.03}, {frequency: 540, duration: 0.16, gain: 0.035}],
-  'production.complete': [{frequency: 440, duration: 0.08, gain: 0.03}, {frequency: 660, duration: 0.12, gain: 0.025}],
-  'research.age.start': [{frequency: 180, duration: 0.12, gain: 0.03}, {frequency: 260, duration: 0.14, gain: 0.03}],
-  'research.age.complete': [{frequency: 330, duration: 0.1, gain: 0.03}, {frequency: 500, duration: 0.12, gain: 0.03}, {frequency: 760, duration: 0.22, gain: 0.035}],
-  'dispatch.arrive': [{frequency: 260, duration: 0.1, gain: 0.03}, {frequency: 390, duration: 0.12, gain: 0.03}, {frequency: 520, duration: 0.2, gain: 0.03}],
+  'construction.complete': [
+    {frequency: 300, duration: 0.08, gain: 0.03},
+    {frequency: 540, duration: 0.16, gain: 0.035},
+  ],
+  'production.complete': [
+    {frequency: 440, duration: 0.08, gain: 0.03},
+    {frequency: 660, duration: 0.12, gain: 0.025},
+  ],
+  'research.age.start': [
+    {frequency: 180, duration: 0.12, gain: 0.03},
+    {frequency: 260, duration: 0.14, gain: 0.03},
+  ],
+  'research.age.complete': [
+    {frequency: 330, duration: 0.1, gain: 0.03},
+    {frequency: 500, duration: 0.12, gain: 0.03},
+    {frequency: 760, duration: 0.22, gain: 0.035},
+  ],
+  'dispatch.arrive': [
+    {frequency: 260, duration: 0.1, gain: 0.03},
+    {frequency: 390, duration: 0.12, gain: 0.03},
+    {frequency: 520, duration: 0.2, gain: 0.03},
+  ],
   'combat.attack': [{frequency: 90, duration: 0.06, type: 'sawtooth', gain: 0.025, slide: 70}],
   'combat.projectile.launch': [{frequency: 100, duration: 0.07, type: 'sawtooth', gain: 0.025, slide: 55}],
   'combat.projectile.impact': [{frequency: 75, duration: 0.12, type: 'square', gain: 0.035, slide: 45}],
@@ -62,7 +94,11 @@ const tones: Record<AudioEventId, Tone[]> = {
   'weather.rain': [{frequency: 720, duration: 0.035, type: 'sine', gain: 0.012}],
   'weather.thunder': [{frequency: 48, duration: 0.35, type: 'sawtooth', gain: 0.05, slide: 30}],
   'weather.lightning': [{frequency: 180, duration: 0.08, type: 'square', gain: 0.04, slide: 90}],
-  'match.victory': [{frequency: 392, duration: 0.12, gain: 0.035}, {frequency: 523, duration: 0.14, gain: 0.035}, {frequency: 784, duration: 0.28, gain: 0.04}],
+  'match.victory': [
+    {frequency: 392, duration: 0.12, gain: 0.035},
+    {frequency: 523, duration: 0.14, gain: 0.035},
+    {frequency: 784, duration: 0.28, gain: 0.04},
+  ],
 };
 
 let context: AudioContext | undefined;
@@ -99,7 +135,8 @@ function chooseVariant(id: string, variants: string[]) {
 function getContext() {
   if (typeof window === 'undefined') return undefined;
   if (!context) {
-    const Audio = window.AudioContext || (window as typeof window & {webkitAudioContext: typeof AudioContext}).webkitAudioContext;
+    const Audio =
+      window.AudioContext || (window as typeof window & {webkitAudioContext: typeof AudioContext}).webkitAudioContext;
     context = new Audio();
     master = context.createGain();
     master.gain.value = 0.72;
@@ -174,7 +211,8 @@ export function playAudio(id: AudioEventId, intensity = 1) {
 
 export function audioForSimulationEvent(kind: string, text: string) {
   const value = `${kind} ${text}`.toLowerCase();
-  if (kind === 'rejected' || value.includes('cannot') || value.includes('no accessible')) return 'ui.command.rejected' as const;
+  if (kind === 'rejected' || value.includes('cannot') || value.includes('no accessible'))
+    return 'ui.command.rejected' as const;
   if (kind === 'victory' || value.includes('wins by conquest')) return 'match.victory' as const;
   if (kind === 'combat' && value.includes('destroyed')) return 'combat.destroyed' as const;
   if (kind === 'combat') return 'combat.attack' as const;
@@ -201,7 +239,8 @@ export function voiceForSimulationEvent(kind: string, text: string) {
   const value = `${kind} ${text}`.toLowerCase();
   if (kind === 'victory' || value.includes('wins by conquest')) return 'victory';
   if (kind === 'build' && value.includes('completed')) return 'building_complete';
-  if (kind === 'age' && value.includes('advanced')) return `age_${value.includes('4') ? 'industrial' : value.includes('3') ? 'medieval' : 'classical'}`;
+  if (kind === 'age' && value.includes('advanced'))
+    return `age_${value.includes('4') ? 'industrial' : value.includes('3') ? 'medieval' : 'classical'}`;
   if (kind === 'dispatch' && value.includes('arrived')) return 'dispatch_arrived';
   if (kind === 'gather' && value.includes('no matching')) return 'worker_no_resource';
   return undefined;
@@ -216,4 +255,118 @@ export function playVoice(id: VoiceAssetId, volume = 0.7) {
   const audio = new Audio(`/audio/voices/${selected}.wav`);
   audio.volume = Math.max(0, Math.min(1, volume));
   void audio.play().catch(() => undefined);
+}
+
+const atmosphere = new Map<string, {source: AudioBufferSourceNode; gain: GainNode}>();
+let ambienceLoading: Promise<void> | undefined;
+let ambienceGeneration = 0;
+let currentWeather: import('../../../../packages/protocol/src/index').EnvironmentWeather = 'clear';
+let ambiencePaused = false;
+let lastThunderCycle = -1;
+const thunderBuffers: AudioBuffer[] = [];
+const thunderSources = new Set<AudioBufferSourceNode>();
+const ambienceLevels = {
+  clear: {surf: 0.18, wind: 0.12, rain: 0},
+  windy: {surf: 0.28, wind: 0.5, rain: 0},
+  overcast: {surf: 0.2, wind: 0.23, rain: 0},
+  mist: {surf: 0.14, wind: 0.06, rain: 0},
+  rain: {surf: 0.17, wind: 0.26, rain: 0.36},
+  storm: {surf: 0.32, wind: 0.58, rain: 0},
+};
+function mixAtmosphere() {
+  if (!context) return;
+  for (const [id, voice] of atmosphere) {
+    const level = ambiencePaused ? 0 : ambienceLevels[currentWeather][id as 'surf' | 'wind' | 'rain'];
+    voice.gain.gain.cancelScheduledValues(context.currentTime);
+    voice.gain.gain.setTargetAtTime(level, context.currentTime, 0.8);
+  }
+}
+async function loadAtmosphere(ctx: AudioContext) {
+  const generation = ambienceGeneration;
+  const decoded = await Promise.all(
+    ['surf', 'wind', 'rain', 'thunder', 'thunder_v2', 'thunder_v3'].map(async (id) => {
+      try {
+        const response = await fetch(`/audio/atmosphere/${id}.wav`);
+        if (!response.ok) return;
+        return {id, buffer: await ctx.decodeAudioData(await response.arrayBuffer())};
+      } catch {
+        return;
+      }
+    }),
+  );
+  if (generation !== ambienceGeneration || !master) return;
+  for (const sound of decoded) {
+    if (!sound) continue;
+    if (sound.id.startsWith('thunder')) {
+      thunderBuffers.push(sound.buffer);
+      continue;
+    }
+    const source = ctx.createBufferSource(),
+      gain = ctx.createGain();
+    source.buffer = sound.buffer;
+    source.loop = true;
+    gain.gain.value = 0;
+    source.connect(gain).connect(master);
+    source.start();
+    atmosphere.set(sound.id, {source, gain});
+  }
+  mixAtmosphere();
+}
+/** Cosmetic audio reads the authoritative weather clock. It never advances it. */
+export function setWeatherAudio(
+  weather: import('../../../../packages/protocol/src/index').EnvironmentWeather,
+  tick: number,
+  paused = false,
+) {
+  const changed = currentWeather !== weather || ambiencePaused !== paused;
+  currentWeather = weather;
+  ambiencePaused = paused;
+  if (paused) {
+    for (const source of thunderSources) source.stop();
+    thunderSources.clear();
+  }
+  const ctx = getContext();
+  if (!ctx || !master) return;
+  if (!ambienceLoading) ambienceLoading = loadAtmosphere(ctx);
+  if (changed) mixAtmosphere();
+  const cycle = Math.floor(tick / 194),
+    phase = tick % 194;
+  // Light is immediate; thunder reaches the listener shortly afterwards. Both
+  // use the same 9.7-second strike clock and stop while the match is paused.
+  if (
+    !paused &&
+    weather === 'storm' &&
+    phase >= 14 &&
+    phase <= 30 &&
+    cycle !== lastThunderCycle &&
+    thunderBuffers.length
+  ) {
+    lastThunderCycle = cycle;
+    const source = ctx.createBufferSource(),
+      gain = ctx.createGain();
+    source.buffer = thunderBuffers[cycle % thunderBuffers.length];
+    gain.gain.value = 0.38;
+    source.connect(gain).connect(master);
+    source.start();
+    thunderSources.add(source);
+    source.onended = () => {
+      thunderSources.delete(source);
+      source.disconnect();
+      gain.disconnect();
+    };
+  }
+}
+export function stopWeatherAudio() {
+  ambienceGeneration++;
+  for (const source of thunderSources) source.stop();
+  thunderSources.clear();
+  for (const {source, gain} of atmosphere.values()) {
+    source.stop();
+    source.disconnect();
+    gain.disconnect();
+  }
+  atmosphere.clear();
+  thunderBuffers.length = 0;
+  ambienceLoading = undefined;
+  lastThunderCycle = -1;
 }

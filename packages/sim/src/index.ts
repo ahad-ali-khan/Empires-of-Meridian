@@ -1,3 +1,5 @@
+import {weatherAt} from './weather';
+import {chooseAiProductionUnit} from './ai-composition';
 import {
   buildingById,
   councilChoices,
@@ -25,7 +27,14 @@ import {
   reachableGround,
   requestPath,
 } from './navigation';
-import {wallSpans, inWall, wallPlacementReason} from './walls';
+import {
+  wallSpans,
+  inWall,
+  wallPlacementReason,
+  snapWallEndpoint,
+  gateConversionCost,
+  gateConversionReason,
+} from './walls';
 import {edgeDistance, halfBounds, perimeterPoint} from './spatial';
 import {chooseIntent, DEFAULT_AI_POLICY, featuresFor, teacherIntent} from './ai-policy';
 import {
@@ -43,7 +52,7 @@ import {
   type Stance,
 } from '../../protocol/src/index';
 
-export const MAP_VERSION = 6;
+export const MAP_VERSION = 7;
 type EntityCategory = 'unit' | 'building' | 'resource' | 'projectile' | 'treasure' | 'animal';
 type Task =
   | 'idle'
@@ -132,6 +141,7 @@ export interface Entity {
   recoveryProgress?: number;
   interactionProgress?: number;
   gatherRemainder?: number;
+  aiScoutLeg?: number;
   orders?: Command[];
   directive?: {
     kind: 'attack-move' | 'patrol' | 'guard';
@@ -228,7 +238,7 @@ export interface MatchState {
     seed: number;
     size: number;
     coastX: number;
-    weather: 'clear' | 'rain';
+    weather: import('../../protocol/src/index').EnvironmentWeather;
     wind: number;
     valid: boolean;
     tradeX: number;
@@ -424,7 +434,7 @@ function resource(state: MatchState, kind: string, x: number, z: number, amount:
 export function createMatch(config: MatchConfig): MatchState {
   const playerCount = 1 + Math.max(0, Math.min(3, Math.trunc(config.aiCount ?? 1)));
 
-  const size = {small: 192, medium: 256, large: 320}[config.mapSize ?? 'medium'] * WORLD_SCALE;
+  const size = {small: 256, medium: 320, large: 448}[config.mapSize ?? 'medium'] * WORLD_SCALE;
   const state: MatchState = {
     v: 1,
     config: {...config},
@@ -440,8 +450,7 @@ export function createMatch(config: MatchConfig): MatchState {
       seed: config.seed,
       size,
       coastX: coastAt(size / 2, size, config.seed),
-      weather: config.seed & 1 ? 'rain' : 'clear',
-      wind: 2000 + (config.seed % 5000),
+      ...weatherAt(config.seed, 0),
       valid: true,
       tradeX: 80 * WORLD_SCALE,
     },
@@ -526,21 +535,30 @@ export function createMatch(config: MatchConfig): MatchState {
       i % 13 === 3 || i % 13 === 4 ? 14000 : 45000 + i * 1000,
     );
   }
-  for (const ratio of [0.23, 0.45, 0.7, 0.77, 0.85]) {
-    const z = Math.trunc(size * ratio);
+  // Fish follow the complete shoreline network, including inland tributaries.
+  // Choose bank-adjacent positions and keep shoals separated, so every fishing
+  // ground has a plausible, reachable shore instead of a fixed central scan.
+  const fishBudget = Math.round(w / 20);
+  for (let i = 0; i < Math.max(8, Math.round(w / 28)); i++) {
+    const z = Math.trunc(size * (0.1 + (i / (Math.max(8, Math.round(w / 28)) - 1)) * 0.8));
     resource(state, 'fish', coastAt(z, size, config.seed) - 128, z, 50000);
   }
   let lakeFish = 0;
-  for (let z = Math.trunc(size * 0.4); z < size * 0.65 && lakeFish < 4; z += 6 * 256)
-    for (let x = Math.trunc(size * 0.4); x < size * 0.65 && lakeFish < 4; x += 2 * 256) {
+  for (let z = 8 * 256; z < size - 8 * 256 && lakeFish < fishBudget; z += 4 * 256)
+    for (let x = 8 * 256; x < coastAt(z, size, config.seed) - 4 * 256 && lakeFish < fishBudget; x += 3 * 256) {
       if (
-        inlandWater(x, z, size, config.seed) &&
-        (landAt(x - 900, z, size, config.seed) || landAt(x + 900, z, size, config.seed))
-      ) {
-        resource(state, 'fish', x, z, 35000);
-        lakeFish++;
-        break;
-      }
+        !inlandWater(x, z, size, config.seed) ||
+        ![
+          [900, 0],
+          [-900, 0],
+          [0, 900],
+          [0, -900],
+        ].some(([dx, dz]) => landAt(x + dx, z + dz, size, config.seed)) ||
+        state.entities.some((e) => e.kind === 'fish' && dist(e, {x, z}) < 10 * 256)
+      )
+        continue;
+      resource(state, 'fish', x, z, 35000);
+      lakeFish++;
     }
   const frontierStarts = state.entities.filter((e) => e.kind === 'explorer');
   function objectivePosition(kind: string, x: number, z: number) {
@@ -1178,7 +1196,10 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
   }
   if (c.type === 'build') {
     const d = buildingById.get(c.buildingId);
-    if (!d || d.age > p.age) return;
+    if (!d || d.age > p.age) {
+      event(state, d ? `${d.name} requires age ${d.age}.` : 'Unknown building.', 'rejected', p.id);
+      return;
+    }
     const selectedBuilders = [...new Set(c.workerIds)]
       .sort((a, b) => a - b)
       .map((id) => owned(state, id, c.playerId))
@@ -1190,10 +1211,16 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
       return;
     }
     if (d.id === 'wall' && c.endX !== undefined && c.endZ !== undefined) {
-      const spans = wallSpans(c.x, c.z, c.endX, c.endZ);
+      const start = snapWallEndpoint(state, c.x, c.z, p.id),
+        end = snapWallEndpoint(state, c.endX, c.endZ, p.id);
+      const spans = wallSpans(start.x, start.z, end.x, end.z);
       const cost = Object.fromEntries(Object.entries(d.cost).map(([k, n]) => [k, n * spans.length])) as Resources;
       const workers = selectedBuilders;
-      const reason = wallPlacementReason(state, spans, p.id);
+      const reason =
+        wallPlacementReason(state, spans, p.id) ||
+        (c.queued && workers.some((w) => (w.orders?.length ?? 0) + spans.length > 32)
+          ? 'Builder order queue is full (32 orders).'
+          : '');
       if (reason || !workers.length || !canPay(p, cost)) {
         event(state, reason || 'Not enough resources or no builders selected.', 'rejected', p.id);
         return;
@@ -1242,6 +1269,7 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
         w.waitingSince = undefined;
       }
       invalidateNavigation(state);
+      event(state, `${ids.length} wall ${ids.length === 1 ? 'segment' : 'segments'} reserved.`, 'build', p.id);
       state.commandLog.push(structuredClone(c));
       return;
     }
@@ -1295,16 +1323,22 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
   if (c.type === 'convert-gate') {
     const b = owned(state, c.buildingId, p.id),
       d = buildingById.get('gate')!;
-    const cost = {provisions: 0, timber: 2000, coin: 0, metal: 1000};
-    if (b?.kind === 'wall' && b.progress === 10000 && canPay(p, cost)) {
-      pay(p, cost);
-      b.kind = 'gate';
-      b.model = d.model;
-      b.maxHp = d.hp;
-      b.hp = Math.min(b.hp, d.hp);
-      invalidateNavigation(state);
-      event(state, 'Wall converted to a gate.', 'build', p.id);
+    const cost = gateConversionCost(),
+      reason =
+        gateConversionReason(b, p.id, p.age, state) ||
+        (!canPay(p, cost) ? 'Not enough resources to convert this wall to a gate.' : '');
+    if (reason || !b) {
+      event(state, reason || 'Choose a completed wall segment.', 'rejected', p.id);
+      return;
     }
+    pay(p, cost);
+    const health = b.hp / b.maxHp;
+    b.kind = 'gate';
+    b.model = d.model;
+    b.maxHp = d.hp;
+    b.hp = Math.max(1, Math.trunc(d.hp * health));
+    invalidateNavigation(state);
+    event(state, 'Gate opened for your units; enemy units remain blocked.', 'build', p.id);
   }
   if (c.type === 'rally') {
     for (const id of c.buildingIds) {
@@ -2529,12 +2563,14 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
     base = {v: 1 as const, tick: state.tick, playerId: owner};
   const mine = state.entities.filter((e) => e.owner === owner && e.hp > 0),
     workers = mine.filter((e) => e.kind === 'worker'),
-    army = mine.filter((e) => e.category === 'unit' && !['worker', 'explorer'].includes(e.kind));
+    army = mine.filter(
+      (e) =>
+        e.category === 'unit' && e.damage > 0 && !supportByUnit.has(e.kind) && !['worker', 'explorer'].includes(e.kind),
+    );
   const seen = state.entities.filter(
       (e) => e.owner !== 0 && e.owner !== owner && !e.tradeSite && e.hp > 0 && canSee(state, owner, e),
     ),
-    hall = mine.find((e) => e.kind === 'hall'),
-    barracks = mine.find((e) => e.kind === 'barracks');
+    hall = mine.find((e) => e.kind === 'hall');
   const assigned: Record<string, number> = {provisions: 0, timber: 0, coin: 0, metal: 0};
   for (const w of workers) {
     const r = state.entities.find((e) => e.id === w.resourceTargetId || e.id === w.targetId);
@@ -2587,30 +2623,42 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
       issued.push({...base, sequence: next(), type: 'claim-site', entityIds: [scout.id], targetId: site.id});
   }
 
+  const oppositeZ = hall && hall.z > state.map.size / 2 ? 0.23 : 0.77,
+    oppositeX = hall && hall.x > state.map.size / 2 ? 0.25 : 0.72;
+  const searchRoute = [
+    [0.72, oppositeZ],
+    [oppositeX, oppositeZ],
+    [0.25, 0.5],
+    [0.72, 1 - oppositeZ],
+    [0.25, 1 - oppositeZ],
+    [0.5, 0.18],
+  ];
   if (scout && scout.task === 'idle' && !issued.some((c) => 'entityIds' in c && c.entityIds.includes(scout.id))) {
-    const w = state.map.size,
-      route = [
-        [0.5, 0.5],
-        [0.72, 0.72],
-        [0.24, 0.76],
-        [0.76, 0.24],
-        [0.22, 0.5],
-        [0.5, 0.82],
-        [0.82, 0.5],
-        [0.18, 0.18],
-      ],
-      // A scout should finish a leg before being given the next one. Reissuing
-      // the same order every AI interval used to reset its path near waypoints.
-      point = route[Math.floor(state.tick / 1200) % route.length];
-    issued.push({
-      ...base,
-      sequence: next(),
-      type: 'move',
-      entityIds: [scout.id],
-      x: Math.trunc(point[0] * w),
-      z: Math.trunc(point[1] * w),
-    });
+    // Advance after finishing a leg, rather than idling at the same waypoint
+    // until the clock enters another minute. Route from our known starting side.
+    for (let tries = 0; tries < searchRoute.length; tries++) {
+      const leg = scout.aiScoutLeg ?? 0,
+        point = searchRoute[leg % searchRoute.length];
+      scout.aiScoutLeg = leg + 1;
+      const destination = nearestPassable(
+        state,
+        Math.trunc(point[0] * state.map.size),
+        Math.trunc(point[1] * state.map.size),
+        owner,
+      );
+      if (!destination) continue;
+      issued.push({
+        ...base,
+        sequence: next(),
+        type: 'move',
+        entityIds: [scout.id],
+        x: destination[0],
+        z: destination[1],
+      });
+      break;
+    }
   }
+
   if (
     hall &&
     p.population + 3 >= p.populationCap &&
@@ -2639,32 +2687,76 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
     }
   }
   const threat = hall ? seen.filter((e) => e.category === 'unit' && dist(e, hall) < 24 * 256) : [];
-  const enemyMounted = seen.some((e) => unitById.get(e.kind)?.tags.includes('cavalry')),
-    enemyInfantry = seen.some((e) => unitById.get(e.kind)?.tags.includes('infantry'));
-  const choice = enemyMounted
-    ? p.age === 3
-      ? 'pikeman'
-      : 'spearman'
-    : enemyInfantry
-      ? p.age === 3
-        ? 'crossbow'
-        : 'archer'
-      : p.age >= 2
-        ? 'swordsman'
-        : 'militia';
-  if (barracks && barracks.queue.length < 2 && canPay(p, unitById.get(choice)!.cost))
-    issued.push({...base, sequence: next(), type: 'train', buildingId: barracks.id, unitId: choice});
+  // Plan over a private budget and queue copy; only validated commands change the match.
+  const budget = {...p, resources: {...p.resources}},
+    planned = mine.map((e) => ({...e, queue: [...e.queue]}));
+  for (const command of issued)
+    if (command.type === 'train') {
+      const definition = unitById.get(command.unitId)!;
+      pay(budget, definition.cost);
+      budget.population += definition.population;
+      planned.find((e) => e.id === command.buildingId)?.queue.push({kind: definition.id, remaining: 1, total: 1});
+    }
+  for (const command of issued) if (command.type === 'build') pay(budget, buildingById.get(command.buildingId)!.cost);
+  // Diversify infrastructure gradually, instead of spending the entire economy
+  // on one barracks. A single expansion may be under construction at a time.
+  if (
+    hall &&
+    workers.length >= 8 &&
+    !mine.some((e) => e.category === 'building' && e.progress < 10000) &&
+    !issued.some((c) => c.type === 'build')
+  ) {
+    const priorities = ['stable', 'archery', 'market', 'workshop', 'academy', 'arsenal', 'factory'],
+      kind = priorities.find((id) => {
+        const definition = buildingById.get(id)!;
+        return definition.age <= p.age && !mine.some((e) => e.kind === id) && canPay(budget, definition.cost);
+      }),
+      builder = workers.filter((e) => !e.garrisonedIn && e.task !== 'build').sort((a, b) => a.id - b.id)[0];
+    if (kind && builder) {
+      search: for (const radius of [16, 24, 32, 40])
+        for (const [dx, dz] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+          [1, 1],
+          [-1, 1],
+          [1, -1],
+          [-1, -1],
+        ]) {
+          const x = hall.x + dx * radius * WORLD_SCALE,
+            z = hall.z + dz * radius * WORLD_SCALE;
+          if (placementReason(state, kind, x, z)) continue;
+          issued.push({...base, sequence: next(), type: 'build', workerIds: [builder.id], buildingId: kind, x, z});
+          pay(budget, buildingById.get(kind)!.cost);
+          break search;
+        }
+    }
+  }
+  for (const site of planned
+    .filter((e) => e.category === 'building' && e.queue.length < 2)
+    .sort((a, b) => a.id - b.id)) {
+    if (site.kind === 'hall') continue;
+    const choice = chooseAiProductionUnit(budget, site, planned, seen);
+    if (!choice) continue;
+    issued.push({...base, sequence: next(), type: 'train', buildingId: site.id, unitId: choice});
+    const definition = unitById.get(choice)!;
+    pay(budget, definition.cost);
+    budget.population += definition.population;
+    site.queue.push({kind: choice, remaining: definition.trainTicks, total: definition.trainTicks});
+  }
   const researchSite = mine.filter((e) => e.category === 'building' && e.progress === 10000 && !e.queue.length);
   const technology = technologies.find(
     (t) =>
       t.age <= p.age &&
       !p.researched.includes(t.id) &&
       t.prerequisites.every((id) => p.researched.includes(id)) &&
-      canPay(p, t.cost) &&
+      canPay(budget, t.cost) &&
       researchSite.some((b) => b.kind === t.building) &&
       !mine.some((b) => b.queue.some((q) => q.kind === `research:${t.id}`)),
   );
-  if (technology && workers.length >= 8)
+  if (technology && workers.length >= 8) {
+    pay(budget, technology.cost);
     issued.push({
       ...base,
       sequence: next(),
@@ -2672,9 +2764,10 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
       buildingId: researchSite.find((b) => b.kind === technology.building)!.id,
       technologyId: technology.id,
     });
+  }
   if (p.age < 4 && !p.advancing && workers.length >= 8) {
     const advancement = advancements.find((x) => x.age === p.age + 1);
-    if (advancement && canPay(p, advancement.cost))
+    if (advancement && canPay(budget, advancement.cost))
       issued.push({
         ...base,
         sequence: next(),
@@ -2705,7 +2798,9 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
     learnedIntent === 'defend' && aiFeatures.enemyNearBase === 0 && aiFeatures.knownEnemies === 0
       ? teacherIntent(aiFeatures)
       : learnedIntent;
-  let goal: string = policyIntent;
+  let goal: string = issued.some((c) => c.type === 'move' && scout && c.entityIds.includes(scout.id))
+    ? 'scout'
+    : policyIntent;
   const enemyDefenses = seen.filter(
     (e) => e.category === 'building' && ['tower', 'fort', 'wall', 'gate'].includes(e.kind),
   );
@@ -2713,7 +2808,7 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
     (e) => e.category === 'building' && ['barracks', 'stable', 'workshop', 'archery', 'factory'].includes(e.kind),
   );
   const recentTargets = state.aiTargetHistory[owner] ?? [];
-  const target = seen
+  const target = (threat.length ? threat : seen)
     .filter((e) => e.category === 'unit' || e.category === 'building')
     .sort(
       (a, b) =>
@@ -2721,9 +2816,31 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
           aiTargetScore(a, enemyDefenses, enemyProduction, hall, recentTargets) || a.id - b.id,
     )[0];
   const routeIndex = (Math.floor(state.tick / 900) + owner) % 6;
+  const reacting = new Set<number>();
+  for (const soldier of army) {
+    const current = state.entities.find((e) => e.id === soldier.targetId),
+      attacker = seen
+        .filter(
+          (e) =>
+            e.category === 'unit' &&
+            e.damage > 0 &&
+            dist(e, soldier) < 12 * WORLD_SCALE &&
+            (e.targetId === soldier.id || (current?.category === 'building' && e.task === 'attack')),
+        )
+        .sort((a, b) => dist(a, soldier) - dist(b, soldier) || a.id - b.id)[0];
+    if (
+      !attacker ||
+      soldier.targetId === attacker.id ||
+      soldier.garrisonedIn ||
+      (soldier.lastOrder && state.tick - soldier.lastOrder < interval)
+    )
+      continue;
+    issued.push({...base, sequence: next(), type: 'attack', entityIds: [soldier.id], targetId: attacker.id});
+    reacting.add(soldier.id);
+  }
   const strategicAttack =
     (policyIntent === 'defend' && threat.length > 0 && army.length >= 2) ||
-    (policyIntent === 'engage' && army.length >= 3 && !army.some((e) => (e.regroupUntil ?? 0) > state.tick)) ||
+    (policyIntent === 'engage' && army.length >= threshold && !army.some((e) => (e.regroupUntil ?? 0) > state.tick)) ||
     (army.length >= threshold && !army.some((e) => (e.regroupUntil ?? 0) > state.tick));
   if (strategicAttack) {
     goal = policyIntent === 'defend' ? 'defend' : policyIntent === 'engage' ? 'engage' : 'scout and pressure';
@@ -2732,6 +2849,7 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
       const ready = army.filter(
         (e) =>
           e.task === 'idle' &&
+          !reacting.has(e.id) &&
           e.hp * 4 >= e.maxHp * 3 &&
           (e.regroupUntil ?? 0) <= state.tick &&
           e.targetId !== target.id &&
@@ -2755,12 +2873,7 @@ function aiCommands(state: MatchState, owner: PlayerId = 2): Command[] {
       goal = 'scout';
       if (army.length >= threshold && state.tick % 600 === 0) {
         const w = state.map.size,
-          search = [
-            [0.5, 0.5],
-            [0.24, 0.76],
-            [0.76, 0.24],
-            [0.82, 0.5],
-          ][(Math.floor(state.tick / 600) + owner) % 4];
+          search = searchRoute[(Math.floor(state.tick / 600) + owner) % searchRoute.length];
         issued.push({
           ...base,
           sequence: next(),
@@ -2813,8 +2926,8 @@ function aiTargetScore(
 ) {
   let score = 0;
   if (target.category === 'building') {
-    score += target.kind === 'hall' ? 920 : defenses.includes(target) ? 1100 : production.includes(target) ? 760 : 520;
-    if (defenses.some((d) => dist(d, target) < 8 * 256)) score += 120;
+    score += target.kind === 'hall' ? 780 : defenses.includes(target) ? 250 : production.includes(target) ? 760 : 520;
+    if (defenses.some((d) => dist(d, target) < 8 * 256)) score -= 120;
   } else {
     const tags = unitById.get(target.kind)?.tags ?? [];
     score += tags.includes('worker') ? 300 : tags.includes('support') ? 680 : 520;
@@ -3039,6 +3152,9 @@ function checkVictory(state: MatchState) {
 export function step(state: MatchState, commands: Command[]) {
   if (state.winner) return state;
   state.tick++;
+  const weather = weatherAt(state.map.seed, state.tick);
+  if (weather.weather !== state.map.weather) event(state, `Weather changing to ${weather.weather}.`, 'weather');
+  Object.assign(state.map, weather);
   const all = [...commands, ...state.players.filter((p) => p.id !== 1).flatMap((p) => aiCommands(state, p.id))].sort(
     (a, b) => a.tick - b.tick || a.playerId - b.playerId || a.sequence - b.sequence,
   );

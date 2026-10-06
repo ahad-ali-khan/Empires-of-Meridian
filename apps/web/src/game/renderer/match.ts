@@ -1,18 +1,27 @@
+import {alignWall, updateWallPreview} from './wall-view';
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {buildAsset, animateAsset, type AssetKind} from '../../../../../packages/asset-tools/src/models';
 import {setFoliageTime} from '../../../../../packages/asset-tools/src/nature';
 import type {Clip} from '../../../../../packages/asset-tools/src/actors';
 import {placementReason, type MatchSnapshot} from '../../../../../packages/sim/src/index';
-import {buildingById, productionName} from '../../../../../packages/content/src/index';
+import {buildingById, unitById, productionName} from '../../../../../packages/content/src/index';
 import {applyCondition, effectsTime} from '../../../../../packages/asset-tools/src/presentation';
+import {makeSkyProbe} from './lighting';
 import {prepareBuildingView} from './building-view';
 import {halfBounds} from '../../../../../packages/sim/src/spatial';
 import {Ragdoll, MachineWreck} from './ragdoll';
-import {coastAt, terrainHeight, landAt, cliffAt} from '../../../../../packages/sim/src/terrain';
+import {coastAt, terrainHeight, landAt, terrainZone, terrainDepth} from '../../../../../packages/sim/src/terrain';
 import {createEnvironment} from './environment';
 import {random} from './layout';
-import {wallSpans, wallPlacementReason} from '../../../../../packages/sim/src/walls';
+import {landscapeColor, makeGroundMaterial, grassClumpGeometry, laneDistance, type Lane} from './terrain-art';
+import {
+  wallSpans,
+  wallPlacementReason,
+  snapWallEndpoint,
+  gateWallAt,
+  gateConversionReason,
+} from '../../../../../packages/sim/src/walls';
 
 type View = {
   root: T.Group;
@@ -27,6 +36,7 @@ type View = {
   z: number;
   yaw: number;
   phase: number;
+  walked: number;
   stateKey: string;
   label: HTMLDivElement;
   ragdoll?: Ragdoll | MachineWreck;
@@ -43,6 +53,7 @@ export class MatchRenderer {
   readonly camera = new T.PerspectiveCamera(42, 1, 0.2, 1600);
   readonly renderer: T.WebGLRenderer;
   readonly controls: OrbitControls;
+  private skyProbe: T.WebGLRenderTarget;
   readonly ground: T.Mesh;
   private environment = createEnvironment();
   private views = new Map<number, View>();
@@ -57,6 +68,7 @@ export class MatchRenderer {
   }[] = [];
   private batchDirty = false;
   private grass?: T.InstancedMesh;
+  private waterDepth = new T.DataTexture(new Uint8Array(4), 1, 1);
   private worldSize = 256;
   private seed = 90210;
   private worldKey = '';
@@ -93,7 +105,10 @@ export class MatchRenderer {
   }
   private geometries = new Set<T.BufferGeometry>();
   private materials = new Set<T.Material>();
-  private sun = new T.DirectionalLight('#ffead0', 2.6);
+  private sun = new T.DirectionalLight('#ffe8c5', 3.1);
+  private fill = new T.HemisphereLight('#c4d9ec', '#615e45', 1.05);
+  private weather = '';
+  private grassTime = {value: 0};
   private observer: ResizeObserver;
   private shadowTime = 0;
   private boundary = new T.Group();
@@ -113,6 +128,9 @@ export class MatchRenderer {
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.02;
     this.renderer.outputColorSpace = T.SRGBColorSpace;
+    this.skyProbe = makeSkyProbe(this.renderer);
+    this.scene.environment = this.skyProbe.texture;
+    this.scene.environmentIntensity = 0.32;
     const canvas = this.renderer.domElement;
     canvas.addEventListener('pointerdown', this.prepareGesture, true);
     canvas.tabIndex = 0;
@@ -129,14 +147,16 @@ export class MatchRenderer {
       visibilityMap: this.visibility,
       worldSize: this.fogSize,
       coastKnots: {value: new Float32Array(9)},
+      depthMap: {value: this.waterDepth},
     });
     this.environment.waterMat.fragmentShader =
-      'uniform sampler2D visibilityMap;uniform float worldSize;uniform float coastKnots[9];\n' +
+      'uniform sampler2D visibilityMap;uniform sampler2D depthMap;uniform float worldSize;uniform float coastKnots[9];\n' +
       this.environment.waterMat.fragmentShader
         .replace(
           '24.+sin(p.y*.065)*7.+sin(p.y*.16)*2.',
           'mix(coastKnots[int(clamp(floor(p.y/(worldSize/8.)),0.,7.))],coastKnots[int(clamp(floor(p.y/(worldSize/8.)),0.,7.))+1],smoothstep(0.,1.,fract(clamp(p.y/worldSize,0.,.9999)*8.)))',
         )
+        .replace('float depth=max(0.,p.x-shore+4.0);', 'float depth=texture2D(depthMap,clamp(p/worldSize,0.,1.)).r*8.;')
         .replace(
           'gl_FragColor=vec4(col,1.);',
           'col*=mix(.045,1.,texture2D(visibilityMap,clamp(world.xz/worldSize,0.,1.)).r);gl_FragColor=vec4(col,1.);',
@@ -147,7 +167,7 @@ export class MatchRenderer {
     Object.assign(this.sun.shadow.camera, {left: -52, right: 52, top: 52, bottom: -52, near: 0.5, far: 180});
     this.sun.shadow.bias = -0.00025;
     this.sun.shadow.normalBias = 0.09;
-    this.scene.add(this.sun, this.sun.target, new T.HemisphereLight('#cbdde2', '#70734c', 1.8));
+    this.scene.add(this.sun, this.sun.target, this.fill);
     const geo = new T.PlaneGeometry(600, 600, 280, 280);
     geo.rotateX(-Math.PI / 2);
     geo.translate(80, 0, 80);
@@ -170,23 +190,7 @@ export class MatchRenderer {
     }
     geo.setAttribute('color', new T.Float32BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    const tc = document.createElement('canvas');
-    tc.width = tc.height = 128;
-    const ctx = tc.getContext('2d')!,
-      pixels = ctx.createImageData(128, 128);
-    for (let i = 0; i < pixels.data.length; i += 4) {
-      const v = 190 + rand() * 55;
-      pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = v;
-      pixels.data[i + 3] = 255;
-    }
-    ctx.putImageData(pixels, 0, 0);
-    const texture = new T.CanvasTexture(tc);
-    texture.wrapS = texture.wrapT = T.RepeatWrapping;
-    texture.repeat.set(140, 140);
-    this.ground = new T.Mesh(
-      geo,
-      new T.MeshStandardMaterial({vertexColors: true, roughness: 1, map: texture, bumpMap: texture, bumpScale: 0.055}),
-    );
+    this.ground = new T.Mesh(geo, makeGroundMaterial(600));
     this.ground.receiveShadow = true;
     this.scene.add(this.ground);
     this.addGroundCover();
@@ -220,10 +224,16 @@ export class MatchRenderer {
   }
   private addGroundCover() {
     const rand = random(327),
-      g = new T.BufferGeometry();
-    g.setAttribute('position', new T.Float32BufferAttribute([-0.026, 0, 0, 0.026, 0, 0, 0.04, 0.28, 0], 3));
-    g.computeVertexNormals();
-    const material = new T.MeshStandardMaterial({color: '#8b965e', side: T.DoubleSide, roughness: 1});
+      g = grassClumpGeometry();
+    const material = new T.MeshStandardMaterial({vertexColors: true, side: T.DoubleSide, roughness: 1});
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.grassTime = this.grassTime;
+      shader.vertexShader = 'uniform float grassTime;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\n transformed.x += sin(grassTime * 1.6 + instanceMatrix[3].x * .3 + instanceMatrix[3].z * .4) * position.y * position.y * .7;',
+      );
+    };
     this.grass = new T.InstancedMesh(g, material, 14000);
     const matrix = new T.Matrix4(),
       q = new T.Quaternion();
@@ -335,7 +345,10 @@ export class MatchRenderer {
     if (e.button === 0) this.controls.mouseButtons.LEFT = e.altKey && !this.placing ? T.MOUSE.ROTATE : undefined;
   };
   private fogMaterial(material: T.MeshStandardMaterial) {
-    material.onBeforeCompile = (shader) => {
+    const previous = material.userData.beforeFog ?? material.onBeforeCompile;
+    material.userData.beforeFog = previous;
+    material.onBeforeCompile = (shader, renderer) => {
+      previous.call(material, shader, renderer);
       shader.uniforms.visibilityMap = this.visibility;
       shader.uniforms.worldSize = this.fogSize;
       shader.uniforms.fogClock = this.fogTime;
@@ -381,25 +394,63 @@ export class MatchRenderer {
     const pos = geo.attributes.position,
       colors: number[] = [],
       rand = random(this.seed);
+    const lanes: Lane[] = [];
+    // Only observed settlement buildings can form paths. Hidden towns never
+    // leave roads or clearings in the viewer's terrain.
+    for (const building of this.terrainBuildings) {
+      if (building.progress < 10000 || ['hall', 'wall', 'gate', 'farm'].includes(building.kind)) continue;
+      const hall = this.terrainBuildings.find((e) => e.kind === 'hall' && e.owner === building.owner);
+      if (hall && Math.hypot(hall.x - building.x, hall.z - building.z) < 32 * 256)
+        lanes.push([hall.x / 256, hall.z / 256, building.x / 256, building.z / 256]);
+    }
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i),
         z = pos.getZ(i),
-        shore = coastAt(Math.round(z * 256), w * 256, this.seed) / 256 - x;
-      pos.setY(i, this.height(x, z));
-      const c = new T.Color(shore < 6 ? '#c7b891' : '#829369');
-      const n = (Math.sin(x * 0.1 + z * 0.06 + (this.seed % 9)) + Math.cos(z * 0.17 - x * 0.09)) * 0.5;
-      if (cliffAt(Math.round(x * 256), Math.round(z * 256), w * 256, this.seed)) c.set('#8f8776');
-      if (shore >= 6) {
-        c.lerp(new T.Color('#566e4c'), Math.max(0, n) * 0.4);
-        c.lerp(new T.Color('#b1ac79'), Math.max(0, -n) * 0.35);
-      }
-      c.offsetHSL(0, 0, rand() * 0.035 - 0.01);
+        y = this.height(x, z);
+      const shore = coastAt(Math.round(z * 256), w * 256, this.seed) / 256 - x;
+      pos.setY(i, y);
+      const slope =
+        Math.hypot(
+          this.height(x + 0.7, z) - this.height(x - 0.7, z),
+          this.height(x, z + 0.7) - this.height(x, z - 0.7),
+        ) / 1.4;
+      const c = landscapeColor(
+        x,
+        z,
+        y,
+        slope,
+        this.seed,
+        shore,
+        laneDistance(x, z, lanes),
+        terrainZone(Math.round(x * 256), Math.round(z * 256), w * 256, this.seed),
+      );
       colors.push(c.r, c.g, c.b);
     }
+    const groundMaterial = this.ground.material as T.MeshStandardMaterial;
+    groundMaterial.map?.repeat.set(w / 3, w / 3);
     geo.setAttribute('color', new T.Float32BufferAttribute(colors, 3));
     geo.computeVertexNormals();
     this.ground.geometry.dispose();
     this.ground.geometry = geo;
+    this.waterDepth.dispose();
+    const resolution = Math.ceil(w),
+      depthPixels = new Uint8Array(resolution * resolution * 4);
+    for (let z = 0; z < resolution; z++)
+      for (let x = 0; x < resolution; x++) {
+        const depth = terrainDepth(
+          Math.round(((x + 0.5) / resolution) * w * 256),
+          Math.round(((z + 0.5) / resolution) * w * 256),
+          w * 256,
+          this.seed,
+        );
+        const index = (z * resolution + x) * 4;
+        depthPixels[index] = Math.min(255, Math.round((depth / 256 / 8) * 255));
+        depthPixels[index + 3] = 255;
+      }
+    this.waterDepth = new T.DataTexture(depthPixels, resolution, resolution);
+    this.waterDepth.minFilter = this.waterDepth.magFilter = T.LinearFilter;
+    this.waterDepth.needsUpdate = true;
+    this.environment.waterMat.uniforms.depthMap.value = this.waterDepth;
     this.environment.water.geometry.dispose();
     this.environment.water.geometry = new T.PlaneGeometry(w, w, 80, 80);
     this.environment.water.position.set(w / 2, 0.06, w / 2);
@@ -432,19 +483,21 @@ export class MatchRenderer {
       for (let i = 0; i < this.grass.count; i++) {
         const x = rand() * w * 0.9,
           z = rand() * w,
-          blocked = this.terrainBuildings.some(
-            (e) =>
-              e.category === 'building' &&
-              Math.abs(x - e.x / 256) < (buildingById.get(e.kind)?.footprint[0] ?? 3) + 0.7 &&
-              Math.abs(z - e.z / 256) < (buildingById.get(e.kind)?.footprint[1] ?? 3) + 0.7,
-          );
+          blocked =
+            laneDistance(x, z, lanes) < 1.4 ||
+            this.terrainBuildings.some(
+              (e) =>
+                e.category === 'building' &&
+                Math.abs(x - e.x / 256) < (buildingById.get(e.kind)?.footprint[0] ?? 3) + 0.7 &&
+                Math.abs(z - e.z / 256) < (buildingById.get(e.kind)?.footprint[1] ?? 3) + 0.7,
+            );
         matrix.compose(
           new T.Vector3(x, this.height(x, z), z),
           q.setFromAxisAngle(new T.Vector3(0, 1, 0), rand() * 6.28),
           new T.Vector3(
-            1,
-            blocked || !landAt(Math.round(x * 256), Math.round(z * 256), w * 256, this.seed) ? 0 : 0.7 + rand(),
-            1,
+            0.85 + rand() * 0.7,
+            blocked || !landAt(Math.round(x * 256), Math.round(z * 256), w * 256, this.seed) ? 0 : 0.55 + rand() * 0.8,
+            0.85 + rand() * 0.7,
           ),
         );
         this.grass.setMatrixAt(i, matrix);
@@ -672,37 +725,60 @@ export class MatchRenderer {
       const hit = this.ray.intersectObject(this.ground)[0];
       if (hit) {
         this.ghost.position.set(hit.point.x, hit.point.y + 0.06, hit.point.z);
-        if (this.wallAnchor) {
-          const dx = hit.point.x - this.wallAnchor.x,
-            dz = hit.point.z - this.wallAnchor.z;
-          this.ghost.position.set(
-            (hit.point.x + this.wallAnchor.x) / 2,
-            hit.point.y + 0.12,
-            (hit.point.z + this.wallAnchor.z) / 2,
-          );
-          this.ghost.rotation.set(0, -Math.atan2(dz, dx), 0);
-          this.ghost.scale.set(Math.hypot(dx, dz) / 6.4, 1, 1);
-        }
-        const invalid =
-          this.snapshot &&
-          (this.wallAnchor
-            ? wallPlacementReason(
+        let invalid = '';
+        if (this.snapshot && this.placing === 'wall') {
+          const end = snapWallEndpoint(this.snapshot, Math.round(hit.point.x * 256), Math.round(hit.point.z * 256), 1);
+          const start = this.wallAnchor
+            ? snapWallEndpoint(
                 this.snapshot,
-                wallSpans(
-                  Math.round(this.wallAnchor.x * 256),
-                  Math.round(this.wallAnchor.z * 256),
-                  Math.round(hit.point.x * 256),
-                  Math.round(hit.point.z * 256),
-                ),
+                Math.round(this.wallAnchor.x * 256),
+                Math.round(this.wallAnchor.z * 256),
                 1,
               )
+            : {x: end.x - 640, z: end.z};
+          const spans = wallSpans(start.x, start.z, end.x, end.z);
+          invalid = wallPlacementReason(this.snapshot, spans, 1);
+          this.ghost.position.set(0, 0, 0);
+          this.ghost.rotation.set(0, 0, 0);
+          this.ghost.scale.set(1, 1, 1);
+          if (this.ghostFootprint) this.ghostFootprint.visible = false;
+          updateWallPreview(this.ghost, spans, this.snapshot.players[0].age, this.worldSize, this.seed, !!invalid);
+        } else if (this.snapshot) {
+          const gate =
+            this.placing === 'gate'
+              ? gateWallAt(this.snapshot, Math.round(hit.point.x * 256), Math.round(hit.point.z * 256), 1)
+              : undefined;
+          invalid = gate
+            ? gateConversionReason(gate, 1, this.snapshot.players[0].age, this.snapshot)
             : placementReason(
                 this.snapshot,
                 this.placing!,
                 Math.round(hit.point.x * 256),
                 Math.round(hit.point.z * 256),
                 this.placementQuarter,
-              ));
+              );
+          const preview = this.ghost.getObjectByName('buildingPreview') as T.Group | undefined;
+          if (gate) {
+            this.ghost.position.set(gate.x / 256, this.height(gate.x / 256, gate.z / 256), gate.z / 256);
+            this.ghost.rotation.y = -Math.atan2(gate.wallAxis?.[1] ?? 0, gate.wallAxis?.[0] ?? 1280);
+            if (preview)
+              alignWall(
+                preview,
+                {x: gate.x, z: gate.z, dx: gate.wallAxis?.[0] ?? 1280, dz: gate.wallAxis?.[1] ?? 0},
+                this.worldSize,
+                this.seed,
+              );
+          } else {
+            this.ghost.rotation.y = (this.placementQuarter * Math.PI) / 2;
+            if (preview?.userData.wallMatrix) {
+              preview.matrix.copy(preview.userData.wallMatrix);
+              preview.matrixWorldNeedsUpdate = true;
+            }
+          }
+          if (this.ghostFootprint) this.ghostFootprint.visible = !gate;
+          const outline = this.ghost.getObjectByName('placementEdge');
+          if (outline) outline.visible = !gate;
+        }
         this.ghostFootprint?.material.color.set(invalid ? '#eb6556' : '#7ee8b4');
         const edge = this.ghost.getObjectByName('placementEdge') as T.LineLoop | undefined;
         (edge?.material as T.LineBasicMaterial | undefined)?.color.set(invalid ? '#eb6556' : '#7ee8b4');
@@ -847,6 +923,7 @@ export class MatchRenderer {
           preview = buildAsset(definition.model as AssetKind);
         }
         preview = prepareBuildingView(preview, kind) ?? preview;
+        preview.name = 'buildingPreview';
         preview.traverse((o) => {
           if (!(o instanceof T.Mesh)) return;
           const materials = (Array.isArray(o.material) ? o.material : [o.material]).map((source) => {
@@ -939,6 +1016,22 @@ export class MatchRenderer {
   }
   update(snapshot: MatchSnapshot) {
     this.snapshot = snapshot;
+    if (this.weather !== snapshot.map.weather) {
+      this.weather = snapshot.map.weather;
+      this.environment.setWeather(snapshot.map.weather);
+      const rainy = ['rain', 'overcast', 'mist', 'storm'].includes(snapshot.map.weather),
+        storm = snapshot.map.weather === 'storm',
+        mist = snapshot.map.weather === 'mist';
+      this.sun.intensity = storm ? 0.45 : mist ? 0.85 : rainy ? 1.15 : 3.1;
+      this.sun.color.set(rainy ? '#d6e2ed' : '#ffe8c5');
+      this.fill.intensity = rainy ? 1.25 : 1.05;
+      this.scene.fog = new T.FogExp2(
+        storm ? '#536571' : mist ? '#afbfc0' : rainy ? '#809b9e' : '#bacdc6',
+        mist ? 0.01 : storm ? 0.007 : rainy ? 0.005 : 0.0024,
+      );
+      this.renderer.shadowMap.needsUpdate = true;
+    }
+
     this.terrainBuildings = snapshot.entities.filter((e) => e.category === 'building' && e.hp > 0);
     this.refreshRallies();
     this.receivedAt = this.time;
@@ -974,7 +1067,7 @@ export class MatchRenderer {
     const byId = new Map(snapshot.entities.map((e) => [e.id, e]));
     const live = new Set(snapshot.entities.map((e) => e.id));
     for (const e of snapshot.entities) {
-      const age = e.tradeSite ? 2 : Math.min(3, snapshot.players[Math.max(0, e.owner - 1)]?.age ?? 1);
+      const age = e.tradeSite ? 2 : Math.min(4, snapshot.players[Math.max(0, e.owner - 1)]?.age ?? 1);
       const stateKey = [
         e.model,
         e.incapacitatedAt !== undefined ? 'incapacitated' : 'active',
@@ -1024,15 +1117,11 @@ export class MatchRenderer {
           this.templates.set(key, proto);
         }
         const model = proto.clone();
+        model.traverse((o) => {
+          o.userData.externalProjectiles = true;
+        });
         if (e.wallAxis) {
-          const [dx, dz] = e.wallAxis;
-          const width = new T.Box3().setFromObject(model).getSize(new T.Vector3()).x;
-          model.scale.x *= Math.hypot(dx, dz) / 256 / Math.max(0.1, width);
-          const slope =
-            (terrainHeight((e.x + dx / 2) / 256, (e.z + dz / 2) / 256, this.worldSize, this.seed) -
-              terrainHeight((e.x - dx / 2) / 256, (e.z - dz / 2) / 256, this.worldSize, this.seed)) /
-            (Math.hypot(dx, dz) / 256);
-          model.rotation.z = Math.atan(slope);
+          alignWall(model, {x: e.x, z: e.z, dx: e.wallAxis[0], dz: e.wallAxis[1]}, this.worldSize, this.seed);
         }
         if (e.kind === 'fish') {
           model.clear();
@@ -1182,10 +1271,13 @@ export class MatchRenderer {
           z: e.z,
           yaw: 0,
           phase: 0,
+          walked: 0,
         };
         this.views.set(e.id, v);
         this.renderer.shadowMap.needsUpdate = true;
       }
+      v.model.userData.attackStart = e.attackStart;
+      v.model.userData.attackCooldown = unitById.get(e.kind)?.cooldown ?? 35;
       v.target.set(e.x / 256, e.kind === 'fish' ? 0.06 : this.height(e.x / 256, e.z / 256), e.z / 256);
       const dx = e.x - v.x,
         dz = e.z - v.z,
@@ -1410,7 +1502,10 @@ export class MatchRenderer {
         v.label.style.visibility = 'hidden';
         continue;
       }
+      const oldX = v.root.position.x,
+        oldZ = v.root.position.z;
       v.root.position.lerp(v.target, blend);
+      v.walked += Math.hypot(v.root.position.x - oldX, v.root.position.z - oldZ);
       if (checkOcclusion && v.proxy.userData.unit) {
         const center = v.root.position.clone().add(new T.Vector3(0, 1.2, 0));
         const direction = center.clone().sub(this.camera.position),
@@ -1443,7 +1538,29 @@ export class MatchRenderer {
           );
           fish.rotation.set(jumping ? Math.cos(f * Math.PI) * 0.6 : 0, Math.PI / 2, 0);
         }
-      } else if (!v.remembered && v.dynamic) animateAsset(v.model, this.time - v.phase, v.clip);
+      } else if (!v.remembered && v.dynamic) {
+        let motionTime = this.time - v.phase;
+        if (v.clip === 'walk') motionTime = (v.walked / (v.model.userData.gaitStride ?? 0.66)) * (Math.PI / 3);
+        if (['idle', 'walk', 'graze', 'carry'].includes(v.clip))
+          motionTime += (v.proxy.userData.entityId * 0.61803398875) % 5;
+        if (v.clip === 'attack' && v.model.userData.attackStart !== undefined) {
+          const data = v.model.userData;
+          const motion =
+            data.shot && !data.villager
+              ? {period: data.shot.period, contact: data.shot.release}
+              : (data.attackMotion ?? {period: 1.8, contact: 0.72});
+          const elapsed = Math.max(
+            0,
+            ((this.snapshot?.tick ?? 0) - data.attackStart) / 20 + this.time - this.receivedAt,
+          );
+          motionTime =
+            elapsed < 0.4
+              ? (elapsed / 0.4) * motion.contact
+              : motion.contact +
+                Math.min(0.999, (elapsed - 0.4) / (data.attackCooldown / 20)) * (motion.period - motion.contact);
+        }
+        animateAsset(v.model, motionTime, v.clip);
+      }
       for (const name of ['projectile', 'shotFlash'])
         v.model.getObjectByName(name)?.traverse((o) => (o.visible = false));
       v.ring.visible = this.selected.has(v.proxy.userData.entityId) || (v.ring.userData.flashUntil ?? 0) > this.time;
@@ -1481,9 +1598,10 @@ export class MatchRenderer {
       }
       batch.mesh.instanceMatrix.needsUpdate = true;
     }
-    setFoliageTime(this.time, 1);
+    this.grassTime.value = this.time * this.environment.wind.value;
+    setFoliageTime(this.time, this.environment.wind.value);
     effectsTime.value = this.time;
-    this.environment.update(this.time, this.camera);
+    this.environment.update((this.snapshot?.tick ?? 0) / 20 + Math.min(0.05, this.time - this.receivedAt), this.camera);
     if (this.time - this.shadowTime > 0.1) {
       const p = this.controls.target;
       this.sun.position.set(p.x - 32, 62, p.z + 28);
@@ -1498,6 +1616,7 @@ export class MatchRenderer {
   dispose() {
     cancelAnimationFrame(this.frame);
     this.fogTexture.dispose();
+    this.waterDepth.dispose();
     this.observer.disconnect();
     this.controls.dispose();
     window.removeEventListener('keydown', this.keyDown);
@@ -1512,6 +1631,7 @@ export class MatchRenderer {
     textures.forEach((t) => t.dispose());
     this.geometries.forEach((g) => g.dispose());
     this.sun.shadow.dispose();
+    this.skyProbe.dispose();
     this.renderer.dispose();
     this.host.replaceChildren();
   }

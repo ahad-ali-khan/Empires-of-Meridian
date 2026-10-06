@@ -1,3 +1,4 @@
+export type EnvironmentWeather = 'clear' | 'windy' | 'overcast' | 'mist' | 'rain' | 'storm';
 export const PROTOCOL_VERSION = 1;
 export const TICKS_PER_SECOND = 20;
 export const WORLD_SCALE = 256;
