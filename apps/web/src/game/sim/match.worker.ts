@@ -32,7 +32,10 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   try {
     const msg = event.data;
     if (msg.type === 'create' && msg.config) {
-      state = createMatch(msg.config);
+      const config = {...msg.config};
+      delete config.offlineCheats;
+      if (config.mode === 'skirmish' && (config.aiCount ?? 1) > 0) config.offlineCheats = true;
+      state = createMatch(config);
       queued = [];
       paused = false;
       start();

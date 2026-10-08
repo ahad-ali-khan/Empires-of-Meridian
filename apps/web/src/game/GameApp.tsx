@@ -1,6 +1,13 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './match.css';
-import type {Command, Difficulty, MatchConfig, PlayerId, WorkerResponse} from '../../../../packages/protocol/src/index';
+import type {
+  Command,
+  Difficulty,
+  MatchConfig,
+  PlayerId,
+  WorkerRequest,
+  WorkerResponse,
+} from '../../../../packages/protocol/src/index';
 import {
   placementReason,
   evaluatedAttackDamage,
@@ -34,7 +41,9 @@ import {
 } from '../../../../packages/content/src/index';
 import {Showcase} from './renderer/showcase';
 import {Minimap} from './Minimap';
+import {CheatMenu} from './CheatMenu';
 import {MatchRenderer} from './renderer/match';
+import {ambientScene} from './ambient-scene';
 import {getSave, putSave} from './sim/save-store';
 import {
   audioForSimulationEvent,
@@ -43,6 +52,8 @@ import {
   voiceForSimulationEvent,
   setWeatherAudio,
   stopWeatherAudio,
+  setAmbientSources,
+  audioDebugState,
 } from './audio';
 
 type Screen = 'menu' | 'setup' | 'game' | 'credits';
@@ -235,20 +246,34 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     selectedRef = useRef(new Set<number>()),
     buildMode = useRef<string | undefined>(undefined),
     orderMode = useRef<'attack-move' | 'patrol' | 'guard' | 'heal' | undefined>(undefined),
-    winnerAnnounced = useRef(false);
+    winnerAnnounced = useRef(false),
+    renderReady = useRef(false),
+    failureRef = useRef('');
   const [snapshot, setSnapshot] = useState<MatchSnapshot | undefined>(undefined),
     [selected, setSelected] = useState(new Set<number>()),
     [paused, setPaused] = useState(false),
     [message, setMessage] = useState('Scout the coast and establish your economy.'),
     [tutorial, setTutorial] = useState(0),
-    [debug, setDebug] = useState(false);
+    [debug, setDebug] = useState(false),
+    [startup, setStartup] = useState<'loading' | 'ready' | 'error'>('loading'),
+    [failure, setFailure] = useState('');
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  const failMatch = (reason: string) => {
+    if (failureRef.current) return;
+    failureRef.current = reason;
+    worker.current?.postMessage({type: 'pause'});
+    stopWeatherAudio();
+    setFailure(reason);
+    setPaused(true);
+    setStartup('error');
+  };
   useEffect(() => {
-    if (snapshot) setWeatherAudio(snapshot.map.weather, snapshot.tick, paused);
+    if (snapshot && !failureRef.current)
+      setWeatherAudio(snapshot.map.weather, snapshot.tick, paused, engine.current?.weatherAudioTransition());
   }, [paused]);
   const send = (command: ClientCommand) => {
-    if (!snapshot || paused) return;
+    if (!snapshot || paused || !renderReady.current || failureRef.current) return;
     if (command.type === 'stop') {
       orderMode.current = undefined;
       engine.current?.setOrderMode(false);
@@ -292,15 +317,38 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     worker.current = w;
     let pending: MatchSnapshot | undefined,
       previous: MatchSnapshot | undefined,
-      frame = 0;
+      frame = 0,
+      readyFrame = 0,
+      ambientTick = -20;
+    const startupTimeout = setTimeout(() => {
+      if (!renderReady.current)
+        failMatch('The battlefield took too long to prepare. Return to the menu and try again.');
+    }, 40000);
     const consume = () => {
       frame = 0;
-      if (!pending) return;
+      if (!pending || failureRef.current) return;
       const snap = pending;
       pending = undefined;
+      try {
+        if (!engine.current) throw new Error('The battlefield renderer could not be started.');
+        engine.current.update(snap);
+      } catch (error) {
+        failMatch(error instanceof Error ? error.message : 'The battlefield could not be prepared.');
+        return;
+      }
+      if (!renderReady.current && !readyFrame)
+        readyFrame = requestAnimationFrame(() => {
+          readyFrame = 0;
+          if (failureRef.current) return;
+          // The renderer's already scheduled frame runs first. Shader or
+          // frame failures can stop startup before the worker is resumed.
+          renderReady.current = true;
+          clearTimeout(startupTimeout);
+          setStartup('ready');
+          if (!pausedRef.current) w.postMessage({type: 'resume'});
+        });
       snapshotRef.current = snap;
       setSnapshot(snap);
-      engine.current?.update(snap);
       const seen = new Set(previous?.events.map((e) => `${e.tick}:${e.kind}:${e.text}`));
       for (const e of snap.events) {
         if (seen.has(`${e.tick}:${e.kind}:${e.text}`)) continue;
@@ -312,9 +360,20 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       }
       const oldShots = new Set(previous?.projectiles.map((p) => p.id));
       const newShots = new Set(snap.projectiles.map((p) => p.id));
-      for (const shot of snap.projectiles) if (!oldShots.has(shot.id)) playAudio('combat.projectile.launch');
-      if (previous) for (const id of oldShots) if (!newShots.has(id)) playAudio('combat.projectile.impact');
-      setWeatherAudio(snap.map.weather, snap.tick, pausedRef.current);
+      for (const shot of snap.projectiles)
+        if (!oldShots.has(shot.id)) playAudio('combat.projectile.launch', 1, {x: shot.x / 256, z: shot.z / 256});
+      if (previous)
+        for (const shot of previous.projectiles)
+          if (!newShots.has(shot.id))
+            playAudio('combat.projectile.impact', 1, {
+              x: (shot.targetX ?? shot.x) / 256,
+              z: (shot.targetZ ?? shot.z) / 256,
+            });
+      if (snap.tick - ambientTick >= 20) {
+        setAmbientSources(ambientScene(snap, engine.current?.camera.position));
+        ambientTick = snap.tick;
+      }
+      setWeatherAudio(snap.map.weather, snap.tick, pausedRef.current, engine.current?.weatherAudioTransition());
       previous = snap;
     };
     w.onmessage = async (e: MessageEvent<WorkerResponse>) => {
@@ -324,15 +383,30 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       } else if (e.data.type === 'saved' && e.data.save) {
         await putSave(e.data.save);
         setMessage('Match saved.');
-      } else if (e.data.type === 'error') setMessage(e.data.message ?? 'Simulation error');
+      } else if (e.data.type === 'error') failMatch(e.data.message ?? 'The match simulation could not continue.');
+    };
+    w.onerror = (event) => {
+      event.preventDefault();
+      failMatch(event.message || 'The match simulation could not be started.');
+    };
+    w.onmessageerror = () => failMatch('Match data could not be read. Return to the menu and try again.');
+    const prepare = (request: WorkerRequest) => {
+      w.postMessage(request);
+      // Both messages are queued together. The first snapshot is tick zero;
+      // authoritative time stays frozen until its scene has been prepared.
+      w.postMessage({type: 'pause'});
     };
     if (sessionStorage.getItem('load-meridian'))
-      getSave().then((save) => (save ? w.postMessage({type: 'load', save}) : w.postMessage({type: 'create', config})));
-    else w.postMessage({type: 'create', config});
+      getSave()
+        .then((save) => prepare(save ? {type: 'load', save} : {type: 'create', config}))
+        .catch(() => failMatch('The saved match could not be loaded. Return to the menu to start a new match.'));
+    else prepare({type: 'create', config});
     const autosave = setInterval(() => w.postMessage({type: 'save'}), 60000);
     return () => {
       clearInterval(autosave);
+      clearTimeout(startupTimeout);
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(readyFrame);
       w.terminate();
       stopWeatherAudio();
     };
@@ -345,6 +419,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       buildings = selected.filter((e) => e.category === 'building'),
       mobile = selected.filter((e) => e.category === 'unit' || e.kind === 'sheep'),
       workers = mobile.filter((e) => e.kind === 'worker');
+    const feedback = () => (target ? engine.current?.feedback(target.id) : engine.current?.mark(x, z));
     if (buildings.length && !mobile.length) {
       sendRef.current({
         type: 'rally',
@@ -376,7 +451,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         });
       orderMode.current = undefined;
       engine.current?.setOrderMode(false);
-      engine.current?.mark(x, z);
+      feedback();
       setMessage(`${queued ? 'Queued ' : ''}${mode} order sent.`);
       return;
     }
@@ -392,6 +467,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         targetId: target.id,
         queued,
       });
+      feedback();
       setMessage('Healing ordered.');
       return;
     }
@@ -402,6 +478,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         targetId: target.id,
         queued,
       });
+      feedback();
       setMessage('Explorer recovery ordered.');
       return;
     }
@@ -412,7 +489,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         return;
       }
       sendRef.current({type: 'collect-treasure', entityIds: explorers.map((e) => e.id), targetId: target.id, queued});
-      engine.current?.mark(x, z, true);
+      feedback();
       return;
     }
     if (target?.tradeSite && target.owner !== 1 && !target.remembered) {
@@ -422,39 +499,58 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         targetId: target.id,
         queued,
       });
-      engine.current?.mark(x, z, true);
+      feedback();
       return;
     }
-    if (target?.owner === 1 && target.category === 'building') {
-      if (target.progress < 10000 || (target.hp < target.maxHp && workers.length)) {
+    if (target?.owner === 1 && target.category === 'building' && workers.length) {
+      if (target.progress < 10000 || target.hp < target.maxHp) {
         sendRef.current({type: 'resume-build', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
+        feedback();
         setMessage(target.progress < 10000 ? 'Construction resumed.' : 'Repairs ordered.');
-      } else if (workers.length && target.kind === 'farm') {
+        return;
+      }
+      if (target.kind === 'farm') {
         sendRef.current({type: 'gather', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
+        feedback();
         setMessage('Farm work ordered. Each farm has two worker positions.');
-      } else if (workers.length && garrisonCapacity(target.kind, snap.players[0].age) > 0) {
+        return;
+      }
+      if (garrisonCapacity(target.kind, snap.players[0].age) > 0) {
         sendRef.current({type: 'garrison', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
+        feedback();
         setMessage('Villagers taking shelter.');
-      } else setMessage('This building cannot shelter the selected units.');
-      return;
+        return;
+      }
     }
     if (target && !target.remembered && (target.category === 'resource' || target.category === 'animal')) {
-      if (workers.length) {
-        sendRef.current({type: 'gather', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
-        setMessage(target.category === 'animal' ? 'Hunt and gather food.' : 'Gather order issued.');
+      const hunters =
+        target.category === 'animal' && target.hp > 0 ? mobile.filter((e) => e.kind !== 'worker' && e.damage > 0) : [];
+      if (workers.length || hunters.length) {
+        if (workers.length)
+          sendRef.current({type: 'gather', entityIds: workers.map((e) => e.id), targetId: target.id, queued});
+        if (hunters.length)
+          sendRef.current({type: 'attack', entityIds: hunters.map((e) => e.id), targetId: target.id, queued});
+        feedback();
+        setMessage(
+          target.category === 'animal'
+            ? target.hp > 0
+              ? 'Hunt and gather food.'
+              : 'Collecting food.'
+            : 'Gather order issued.',
+        );
+        return;
       }
-      if (target.category === 'animal') {
-        const soldiers = mobile.filter((e) => e.kind !== 'worker' && e.kind !== 'sheep');
-        if (soldiers.length)
-          sendRef.current({type: 'attack', entityIds: soldiers.map((e) => e.id), targetId: target.id, queued});
-      }
-      return;
+      // Non-workers still receive a useful move order when scenery is under the cursor.
     }
     if (target && (target.owner > 1 || target.guardOf !== undefined) && !target.remembered) {
-      sendRef.current({type: 'attack', entityIds: mobile.map((e) => e.id), targetId: target.id, queued});
-      playVoice('enemy_sighted', 0.58);
-      setMessage('Attack order issued.');
-      return;
+      const attackers = mobile.filter((e) => e.damage > 0);
+      if (attackers.length) {
+        sendRef.current({type: 'attack', entityIds: attackers.map((e) => e.id), targetId: target.id, queued});
+        feedback();
+        playVoice('enemy_sighted', 0.58);
+        setMessage('Attack order issued.');
+        return;
+      }
     }
     sendRef.current({
       type: 'move',
@@ -464,57 +560,101 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       z: Math.round(z * 256),
       formation: 'line',
     });
-    engine.current?.mark(x, z);
-    setMessage('Move order issued.');
+    feedback();
+    setMessage(queued ? 'Move order queued.' : 'Move order issued.');
   };
   useEffect(() => {
     if (!host.current) return;
-    const r = new MatchRenderer(
-      host.current,
-      (id, add, button) => {
-        const entity = snapshotRef.current?.entities.find((e) => e.id === id);
-        if (button === 2) {
-          if (entity) orderAt(entity.x / 256, entity.z / 256, id, add);
-          return;
-        }
-        if (orderMode.current && entity) {
-          orderAt(entity.x / 256, entity.z / 256, id, add);
-          return;
-        }
-        const next = add ? new Set(selectedRef.current) : new Set<number>();
-        if (entity) {
-          if (add && next.has(id)) next.delete(id);
-          else next.add(id);
-          playAudio('ui.selection');
-        }
-        selectedRef.current = next;
-        setSelected(next);
-        r.setSelected(next);
-      },
-      (x, z, button, queued) => {
-        if (buildMode.current) {
+    let r: MatchRenderer;
+    try {
+      r = new MatchRenderer(
+        host.current,
+        (id, add, button) => {
+          const entity = snapshotRef.current?.entities.find((e) => e.id === id);
           if (button === 2) {
-            buildMode.current = undefined;
-            r.setPlacement();
-            setMessage('Placement finished. Reserved blueprints remain available for construction.');
+            if (entity) orderAt(entity.x / 256, entity.z / 256, id, add);
             return;
           }
-          if (buildMode.current === 'wall') {
-            const snapped = snapWallEndpoint(snapshotRef.current!, Math.round(x * 256), Math.round(z * 256), 1);
-            x = snapped.x / 256;
-            z = snapped.z / 256;
-            if (!r.wallAnchor) {
-              r.wallAnchor = {x, z};
-              setMessage('Click a corner to build a wall line. Keep clicking to bend it; right-click finishes.');
+          if (orderMode.current && entity) {
+            orderAt(entity.x / 256, entity.z / 256, id, add);
+            return;
+          }
+          const next = add ? new Set(selectedRef.current) : new Set<number>();
+          if (entity) {
+            if (add && next.has(id)) next.delete(id);
+            else next.add(id);
+            playAudio('ui.selection');
+          }
+          selectedRef.current = next;
+          setSelected(next);
+          r.setSelected(next);
+        },
+        (x, z, button, queued) => {
+          if (buildMode.current) {
+            if (button === 2) {
+              buildMode.current = undefined;
+              r.setPlacement();
+              setMessage('Placement finished. Reserved blueprints remain available for construction.');
               return;
             }
-            const spans = wallSpans(
-              Math.round(r.wallAnchor.x * 256),
-              Math.round(r.wallAnchor.z * 256),
-              Math.round(x * 256),
-              Math.round(z * 256),
-            );
-            const reason = snapshotRef.current && wallPlacementReason(snapshotRef.current, spans, 1);
+            if (buildMode.current === 'wall') {
+              const snapped = snapWallEndpoint(snapshotRef.current!, Math.round(x * 256), Math.round(z * 256), 1);
+              x = snapped.x / 256;
+              z = snapped.z / 256;
+              if (!r.wallAnchor) {
+                r.wallAnchor = {x, z};
+                setMessage('Click a corner to build a wall line. Keep clicking to bend it; right-click finishes.');
+                return;
+              }
+              const spans = wallSpans(
+                Math.round(r.wallAnchor.x * 256),
+                Math.round(r.wallAnchor.z * 256),
+                Math.round(x * 256),
+                Math.round(z * 256),
+              );
+              const reason = snapshotRef.current && wallPlacementReason(snapshotRef.current, spans, 1);
+              if (reason) {
+                setMessage(reason);
+                return;
+              }
+              sendRef.current?.({
+                type: 'build',
+                workerIds: [...selectedRef.current],
+                buildingId: 'wall',
+                x: Math.round(r.wallAnchor.x * 256),
+                z: Math.round(r.wallAnchor.z * 256),
+                endX: Math.round(x * 256),
+                endZ: Math.round(z * 256),
+                queued,
+              } as never);
+              r.wallAnchor = {x, z};
+              return;
+            }
+            if (buildMode.current === 'gate' && snapshotRef.current) {
+              const wall = gateWallAt(snapshotRef.current, Math.round(x * 256), Math.round(z * 256), 1);
+              if (wall) {
+                const reason = gateConversionReason(wall, 1, snapshotRef.current.players[0].age, snapshotRef.current);
+                if (reason) {
+                  setMessage(reason);
+                  return;
+                }
+                sendRef.current({type: 'convert-gate', buildingId: wall.id});
+                if (!queued) {
+                  buildMode.current = undefined;
+                  r.setPlacement();
+                }
+                return;
+              }
+            }
+            const reason =
+              snapshotRef.current &&
+              placementReason(
+                snapshotRef.current,
+                buildMode.current,
+                Math.round(x * 256),
+                Math.round(z * 256),
+                r.getPlacementRotation(),
+              );
             if (reason) {
               setMessage(reason);
               return;
@@ -522,81 +662,44 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
             sendRef.current?.({
               type: 'build',
               workerIds: [...selectedRef.current],
-              buildingId: 'wall',
-              x: Math.round(r.wallAnchor.x * 256),
-              z: Math.round(r.wallAnchor.z * 256),
-              endX: Math.round(x * 256),
-              endZ: Math.round(z * 256),
+              buildingId: buildMode.current,
+              x: Math.round(x * 256),
+              z: Math.round(z * 256),
+              rotation: r.getPlacementRotation(),
               queued,
             } as never);
-            r.wallAnchor = {x, z};
-            return;
-          }
-          if (buildMode.current === 'gate' && snapshotRef.current) {
-            const wall = gateWallAt(snapshotRef.current, Math.round(x * 256), Math.round(z * 256), 1);
-            if (wall) {
-              const reason = gateConversionReason(wall, 1, snapshotRef.current.players[0].age, snapshotRef.current);
-              if (reason) {
-                setMessage(reason);
-                return;
-              }
-              sendRef.current({type: 'convert-gate', buildingId: wall.id});
-              if (!queued) {
-                buildMode.current = undefined;
-                r.setPlacement();
-              }
-              return;
+            playAudio('ui.build.placed');
+            if (!queued) {
+              buildMode.current = undefined;
+              r.setPlacement();
             }
-          }
-          const reason =
-            snapshotRef.current &&
-            placementReason(
-              snapshotRef.current,
-              buildMode.current,
-              Math.round(x * 256),
-              Math.round(z * 256),
-              r.getPlacementRotation(),
+            setMessage(
+              queued
+                ? 'Blueprint reserved and queued. Shift-place another; right-click finishes.'
+                : 'Construction order issued.',
             );
-          if (reason) {
-            setMessage(reason);
             return;
           }
-          sendRef.current?.({
-            type: 'build',
-            workerIds: [...selectedRef.current],
-            buildingId: buildMode.current,
-            x: Math.round(x * 256),
-            z: Math.round(z * 256),
-            rotation: r.getPlacementRotation(),
-            queued,
-          } as never);
-          playAudio('ui.build.placed');
-          if (!queued) {
-            buildMode.current = undefined;
-            r.setPlacement();
+          if ((button === 2 || orderMode.current) && selectedRef.current.size) orderAt(x, z, undefined, queued);
+          else {
+            selectedRef.current = new Set();
+            setSelected(new Set());
+            r.setSelected(new Set());
           }
-          setMessage(
-            queued
-              ? 'Blueprint reserved and queued. Shift-place another; right-click finishes.'
-              : 'Construction order issued.',
-          );
-          return;
-        }
-        if ((button === 2 || orderMode.current) && selectedRef.current.size) orderAt(x, z, undefined, queued);
-        else {
-          selectedRef.current = new Set();
-          setSelected(new Set());
-          r.setSelected(new Set());
-        }
-      },
-      (ids, add) => {
-        const next = add ? new Set([...selectedRef.current, ...ids]) : new Set(ids);
-        selectedRef.current = next;
-        setSelected(next);
-        r.setSelected(next);
-        playAudio('ui.selection', Math.min(1.25, 0.8 + next.size / 20));
-      },
-    );
+        },
+        (ids, add) => {
+          const next = add ? new Set([...selectedRef.current, ...ids]) : new Set(ids);
+          selectedRef.current = next;
+          setSelected(next);
+          r.setSelected(next);
+          if (next.size) playAudio('ui.selection', Math.min(1.25, 0.8 + next.size / 20));
+        },
+        failMatch,
+      );
+    } catch (error) {
+      failMatch(error instanceof Error ? error.message : 'The battlefield renderer could not be started.');
+      return;
+    }
     engine.current = r;
     return () => r.dispose();
   }, []);
@@ -660,6 +763,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         project: (id: number) => engine.current?.projectEntity(id),
         projectWorld: (x: number, z: number) => engine.current?.projectWorld(x, z),
         metrics: () => engine.current?.metrics(),
+        audio: () => audioDebugState(),
         camera: () =>
           engine.current
             ? {position: engine.current.camera.position.toArray(), target: engine.current.controls.target.toArray()}
@@ -675,7 +779,7 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
     one?.owner === 1 && one?.category === 'building'
       ? units.filter((u) => buildingById.get(one.kind)?.production.includes(u.id) && u.age <= (p?.age ?? 1))
       : [];
-  const buildable = buildings.filter((b) => b.age <= (p?.age ?? 1) && !['hall'].includes(b.id));
+  const buildable = buildings.filter((b) => b.age <= (p?.age ?? 1));
   const tutorialSteps = [
     'Select a worker beside your Charter Hall. Left-drag a box to select a group; Shift adds to selection. Alt-left-drag orbits, middle-drag pans, and scrolling zooms.',
     'Right-click the berry bushes or a tree. Workers gather, carry and return resources to the hall.',
@@ -722,6 +826,18 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
         >
           <img src="/crest.svg" />
         </button>
+        <CheatMenu
+          enabled={!!snapshot?.offlineCheats && !paused && startup === 'ready' && snapshot.winner === null}
+          used={p?.cheatsUsed ?? 0}
+          selected={chosen.filter((e) => e.owner === 1 && e.hp > 0).length}
+          onCheat={(cheat) =>
+            send({
+              type: 'offline-cheat',
+              cheat,
+              entityIds: chosen.filter((e) => e.owner === 1 && e.hp > 0).map((e) => e.id),
+            })
+          }
+        />
         {p &&
           (['provisions', 'timber', 'coin', 'metal'] as const).map((k) => (
             <div key={k}>
@@ -1273,7 +1389,19 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
       <div className="toast" aria-live="polite">
         {message}
       </div>
-      {paused && (
+      {startup !== 'ready' && (
+        <div className="pause-overlay" role={startup === 'error' ? 'alert' : 'status'}>
+          <section>
+            <h2>{startup === 'error' ? 'Match stopped' : 'Preparing battlefield'}</h2>
+            <p>
+              {startup === 'error' ? failure : 'Generating the world and preparing its units, buildings and terrain.'}
+            </p>
+            {startup === 'error' && <p>Your match clock has been paused.</p>}
+            <button onClick={onExit}>Return to menu</button>
+          </section>
+        </div>
+      )}
+      {paused && startup === 'ready' && (
         <div className="pause-overlay">
           <section>
             <h2>Match paused</h2>
@@ -1307,6 +1435,12 @@ function Match({config, onExit}: {config: MatchConfig; onExit: () => void}) {
                 : 'Your settlement can no longer sustain resistance.'}
             </p>
             <dl>
+              {!!p?.cheatsUsed && (
+                <>
+                  <dt>Offline cheats used</dt>
+                  <dd>{p.cheatsUsed}</dd>
+                </>
+              )}
               <dt>Resources gathered</dt>
               <dd>{format(Object.values(p!.stats.gathered).reduce((a, b) => a + b, 0))}</dd>
               <dt>Enemy units defeated</dt>

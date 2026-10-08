@@ -26,7 +26,7 @@ export class DeterministicFixtureRoom extends Room {
       );
     }, 50);
     this.onMessage('command', (_client, command: Command) => {
-      if (!command || command.v !== 1 || command.playerId !== 1) return;
+      if (!command || command.v !== 1 || command.playerId !== 1 || command.type === 'offline-cheat') return;
       this.pending.push({...command, tick: this.state.tick + 1});
     });
   }

@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {random} from './layout';
+import {WeatherTransition} from './weather-transition';
 
 export type Weather = import('../../../../../packages/protocol/src/index').EnvironmentWeather;
 const noiseGLSL = `
@@ -11,6 +12,7 @@ float fbm(vec2 p){float n=0.,a=.5;for(int i=0;i<4;i++){n+=noise(p)*a;p=mat2(1.6,
 export function createEnvironment() {
   const group = new T.Group();
   const time = {value: 0},
+    waterTime = {value: 0},
     cloud = {value: 0.2},
     storm = {value: 0},
     flash = {value: 0};
@@ -67,7 +69,7 @@ export function createEnvironment() {
 
   const waterMat = new T.ShaderMaterial({
     depthWrite: true,
-    uniforms: {time, storm, golden, wind, sunDirection, shoal: {value: new T.Vector3(40, 34, 4.5)}},
+    uniforms: {time: waterTime, storm, golden, wind, sunDirection, shoal: {value: new T.Vector3(40, 34, 4.5)}},
     vertexShader: `
       varying vec3 world;uniform float time,storm;
       void main(){vec3 p=position;float amp=.022+storm*.045;
@@ -78,7 +80,7 @@ export function createEnvironment() {
       varying vec3 world;uniform float time,storm,golden,wind;uniform vec3 sunDirection,shoal;
       ${noiseGLSL}
       void main(){
-        vec2 p=world.xz;float t=time*(.55+storm*.55);
+        vec2 p=world.xz;float t=time;
         float a=p.x*.41+p.y*.17+t,b=p.x*-.23+p.y*.53+t*.83,c=p.x*.83-p.y*.37-t*.53;
         vec2 slope=vec2(.41,.17)*cos(a)*.08+vec2(-.23,.53)*cos(b)*.066+vec2(.83,-.37)*cos(c)*.021;
         slope+=vec2(noise(p*1.1+t*.06)-.5,noise(p*1.2-t*.05)-.5)*.021;
@@ -176,38 +178,31 @@ export function createEnvironment() {
   }
   const lightningLight = new T.PointLight('#b9d8ff', 0, 120, 2);
   group.add(lightningLight);
-  let activeWeather: Weather = 'clear';
+  const transition = new WeatherTransition();
   function setWeather(weather: Weather) {
-    activeWeather = weather;
-    cloud.value =
-      weather === 'clear'
-        ? 0.2
-        : weather === 'windy'
-          ? 0.35
-          : weather === 'mist'
-            ? 0.6
-            : weather === 'overcast'
-              ? 0.92
-              : 1;
-    storm.value = weather === 'storm' ? 1 : weather === 'rain' ? 0.4 : 0;
-    wind.value =
-      weather === 'storm' ? 2.8 : weather === 'windy' ? 2.2 : weather === 'rain' ? 1.5 : weather === 'mist' ? 0.5 : 1;
-    rain.visible = weather === 'rain';
-    rainMat.uniforms.density.value = weather === 'rain' ? 0.68 : 0;
-    lightning.visible = weather === 'storm';
+    transition.set(weather, time.value);
   }
   const look = new T.Vector3(),
     anchor = new T.Vector3();
   function update(t: number, camera: T.Camera) {
+    const elapsed = Math.max(0, Math.min(0.25, t - time.value));
     time.value = t;
+    const weatherLook = transition.sample(t);
+    cloud.value = weatherLook.cloud;
+    storm.value = weatherLook.storm;
+    waterTime.value += elapsed * (0.55 + storm.value * 0.55);
+    wind.value = weatherLook.wind;
+    rainMat.uniforms.density.value = weatherLook.rain;
+    rain.visible = weatherLook.rain > 0.001;
+    lightning.visible = weatherLook.lightning > 0.001;
     sky.position.copy(camera.position);
     rainMat.uniforms.anchor.value.copy(camera.position);
     const cycle = Math.floor(t / 9.7),
       phase = t % 9.7;
     const strike = phase < 0.09 ? 1 : phase > 0.18 && phase < 0.25 ? 0.55 : phase > 0.39 && phase < 0.44 ? 0.24 : 0;
-    boltMaterial.opacity = activeWeather === 'storm' ? strike : 0;
-    flash.value = activeWeather === 'storm' ? strike * 0.57 : 0;
-    lightningLight.intensity = activeWeather === 'storm' ? strike * 22 : 0;
+    boltMaterial.opacity = strike * weatherLook.lightning;
+    flash.value = strike * 0.57 * weatherLook.lightning;
+    lightningLight.intensity = strike * 22 * weatherLook.lightning;
     camera.getWorldDirection(look);
     look.y = 0;
     if (look.lengthSq() < 0.001) look.set(0, 0, -1);
@@ -222,5 +217,18 @@ export function createEnvironment() {
     lightningLight.position.copy(anchor).add(new T.Vector3(0, 30, 0));
   }
   setWeather('clear');
-  return {group, waterMat, sky, water, rain, setWeather, update, golden, sunDirection, wind};
+  return {
+    group,
+    waterMat,
+    sky,
+    water,
+    rain,
+    setWeather,
+    update,
+    golden,
+    sunDirection,
+    wind,
+    look: transition.current,
+    audioTransition: transition.blend,
+  };
 }

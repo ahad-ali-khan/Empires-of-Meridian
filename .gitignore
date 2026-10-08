@@ -9,6 +9,7 @@ apps/web/dist/
 *.log
 *.tsbuildinfo
 .turbo/
+.pnpm-store/
 test-results/
 playwright-report/
 coverage/

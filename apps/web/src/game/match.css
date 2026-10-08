@@ -187,6 +187,15 @@
   width: 190px;
   box-sizing: border-box;
 }
+.cheat-toggle { margin-left: auto; padding: 8px 12px; font-size: 11px; }
+.cheat-menu { position: absolute; right: 12px; top: 70px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 90px); overflow: auto; background: #182d29f5; border: 1px solid #a48d56; box-shadow: 0 10px 36px #0009; padding: 16px; z-index: 20; box-sizing: border-box; }
+.cheat-menu header { display: flex; align-items: center; justify-content: space-between; }
+.cheat-menu h2 { margin: 0; font-size: 22px; }
+.cheat-menu p { line-height: 1.5; font-size: 12px; }
+.cheat-menu small { display: block; font-size: 10px; opacity: .8; }
+.cheat-menu > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.cheat-menu button { padding: 9px; text-align: left; }
+.cheat-menu button small { margin-top: 5px; line-height: 1.4; }
 .building-world-label small {
   display: block;
   margin-top: 4px;

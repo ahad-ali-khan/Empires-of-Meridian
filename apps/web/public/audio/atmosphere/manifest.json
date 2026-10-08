@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "source": "Original layered noise synthesis in scripts/generate-weather-audio.mjs",
+  "version": 2,
+  "source": "Original layered noise and wildlife vocal synthesis in scripts/generate-weather-audio.mjs",
   "license": "Original project assets; same terms as repository",
   "sampleRate": 48000,
   "channels": 2,
@@ -21,6 +21,42 @@
       "id": "surf",
       "file": "surf.wav",
       "sha256": "78a2839810a2307080fda8ceff5ac04fd494687b62178a7bdde6250b39bc3e64",
+      "loop": true
+    },
+    {
+      "id": "foliage",
+      "file": "foliage.wav",
+      "sha256": "3db38eed908f918cb85231c52eface2bf41d05b63a218649a9067c06a1aeaf88",
+      "loop": true
+    },
+    {
+      "id": "brook",
+      "file": "brook.wav",
+      "sha256": "9bd09684465f8416227ca534edec9006ab86a46fc758647951c0f033ea3cb2a0",
+      "loop": true
+    },
+    {
+      "id": "insects",
+      "file": "insects.wav",
+      "sha256": "30746bb1de503c568063fd84406591b2e8641ad143169567688fd7cad3fd20ba",
+      "loop": true
+    },
+    {
+      "id": "birds",
+      "file": "birds.wav",
+      "sha256": "44064764a8f2fd641dd88960704e5fc67cc8e21c55db25e6a4253a5da545415f",
+      "loop": true
+    },
+    {
+      "id": "wolf",
+      "file": "wolf.wav",
+      "sha256": "7d4b76cb5bacfbe0488a70b5810e128424f788c1920d171a121988435ad4999f",
+      "loop": true
+    },
+    {
+      "id": "sheep",
+      "file": "sheep.wav",
+      "sha256": "8993d75ff5a62e201894b08b577c60c2c43faaf3f1728e3c7a9d018f7c420a2e",
       "loop": true
     },
     {

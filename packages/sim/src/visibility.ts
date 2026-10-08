@@ -36,6 +36,10 @@ export function present(state: MatchState, e: Entity) {
 }
 export function updateVision(state: MatchState) {
   const width = Math.ceil(state.map.size / FOG_CELL);
+  // Memory eviction is a membership query, not a nearest-entity search. A
+  // single index prevents every remembered tree/building from scanning the
+  // entire world on each visibility update as explored territory grows.
+  const presentIds = new Set(state.entities.filter((e) => e.hp > 0 && present(state, e)).map((e) => e.id));
   for (const owner of state.players.map((p) => p.id)) {
     const fog = state.fog[owner - 1];
     for (let i = 0; i < width * width; i++) fog[i] = fog[i] ? 1 : 0;
@@ -57,21 +61,21 @@ export function updateVision(state: MatchState) {
           }
       }
     const memory = state.knowledge[owner - 1];
+    const remembered: Entity[] = [];
     for (const e of state.entities) {
       if (
         (e.category === 'building' || e.category === 'resource' || e.category === 'treasure') &&
         visibleTo(state, owner, e)
       ) {
-        if (present(state, e) && e.hp > 0) memory[e.id] = {...structuredClone(e), remembered: true, queue: []};
+        if (present(state, e) && e.hp > 0) remembered.push(e);
         else delete memory[e.id];
       }
     }
+    // Batch the copy once per player while keeping remembered values detached
+    // from authoritative entities (including nested paths/cargo/orders).
+    for (const e of structuredClone(remembered)) memory[e.id] = {...e, remembered: true, queue: []};
     for (const [id, e] of Object.entries(memory))
-      if (
-        visibleTo(state, owner, e) &&
-        !state.entities.some((current) => current.id === Number(id) && present(state, current) && current.hp > 0)
-      )
-        delete memory[Number(id)];
+      if (visibleTo(state, owner, e) && !presentIds.has(Number(id))) delete memory[Number(id)];
   }
 }
 export function observedEntities(state: MatchState, owner: PlayerId) {

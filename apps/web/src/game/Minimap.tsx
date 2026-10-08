@@ -18,13 +18,52 @@ export function Minimap({
   const canvas = useRef<HTMLCanvasElement>(null),
     [filter, setFilter] = useState<'all' | 'economy' | 'military'>('all'),
     [expanded, setExpanded] = useState(false),
-    dragging = useRef(false);
+    dragging = useRef(false),
+    terrain = useRef<{key: string; canvas: HTMLCanvasElement; image: ImageData; cells: Uint8Array} | undefined>(
+      undefined,
+    );
   useEffect(() => {
     if (!snapshot || !canvas.current) return;
     const node = canvas.current,
       ctx = node.getContext('2d')!,
       n = 256,
       size = snapshot.map.size;
+    const fw = snapshot.fogWidth,
+      key = `${snapshot.map.seed}:${size}:${fw}`;
+    if (terrain.current?.key !== key) {
+      const backdrop = document.createElement('canvas');
+      backdrop.width = backdrop.height = fw;
+      const cells = new Uint8Array(fw * fw);
+      for (let z = 0; z < fw; z++)
+        for (let x = 0; x < fw; x++) {
+          const wx = ((x + 0.5) * size) / fw,
+            wz = ((z + 0.5) * size) / fw;
+          cells[z * fw + x] = cliffAt(wx, wz, size, snapshot.map.seed)
+            ? 2
+            : wx < coastAt(wz, size, snapshot.map.seed) && !inlandWater(wx, wz, size, snapshot.map.seed)
+              ? 1
+              : 0;
+        }
+      terrain.current = {key, canvas: backdrop, image: backdrop.getContext('2d')!.createImageData(fw, fw), cells};
+    }
+    const backdrop = terrain.current!,
+      palette = [
+        [
+          [16, 32, 31],
+          [41, 63, 73],
+          [95, 158, 170],
+        ],
+        [
+          [16, 32, 31],
+          [66, 79, 60],
+          [141, 155, 107],
+        ],
+        [
+          [16, 32, 31],
+          [92, 85, 72],
+          [178, 163, 138],
+        ],
+      ];
     let frame = 0,
       last = 0;
     const draw = (time: number) => {
@@ -32,22 +71,17 @@ export function Minimap({
       if (time - last < 100) return;
       last = time;
       ctx.clearRect(0, 0, n, n);
-      const fw = snapshot.fogWidth,
-        cell = n / fw;
-      for (let z = 0; z < fw; z++)
-        for (let x = 0; x < fw; x++) {
-          const fog = snapshot.fog[z * fw + x],
-            wx = ((x + 0.5) * size) / fw,
-            wz = ((z + 0.5) * size) / fw,
-            land = wx < coastAt(wz, size, snapshot.map.seed) && !inlandWater(wx, wz, size, snapshot.map.seed);
-          ctx.fillStyle =
-            fog === 0 ? '#10201f' : land ? (fog === 2 ? '#8d9b6b' : '#424f3c') : fog === 2 ? '#5f9eaa' : '#293f49';
-          ctx.fillRect(x * cell, z * cell, cell + 1, cell + 1);
-          if (fog && cliffAt(wx, wz, size, snapshot.map.seed)) {
-            ctx.fillStyle = fog === 2 ? '#b2a38a' : '#5c5548';
-            ctx.fillRect(x * cell, z * cell, cell + 1, cell + 1);
-          }
-        }
+      for (let i = 0; i < backdrop.cells.length; i++) {
+        const rgb = palette[backdrop.cells[i]][snapshot.fog[i] ?? 0],
+          p = i * 4;
+        backdrop.image.data[p] = rgb[0];
+        backdrop.image.data[p + 1] = rgb[1];
+        backdrop.image.data[p + 2] = rgb[2];
+        backdrop.image.data[p + 3] = 255;
+      }
+      backdrop.canvas.getContext('2d')!.putImageData(backdrop.image, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(backdrop.canvas, 0, 0, n, n);
       for (const e of snapshot.entities) {
         if (e.hp <= 0 && e.incapacitatedAt === undefined) continue;
         if (filter === 'military' && (e.category === 'resource' || e.category === 'animal' || e.kind === 'worker'))

@@ -1,4 +1,5 @@
 import {weatherAt} from './weather';
+import {applyOfflineCheat} from './offline-cheats';
 import {chooseAiProductionUnit} from './ai-composition';
 import {
   buildingById,
@@ -168,6 +169,7 @@ export interface Entity {
   regroupUntil?: number;
 }
 export interface PlayerState {
+  cheatsUsed?: number;
   id: PlayerId;
   advancing?: {councilId: string; remaining: number; total: number; waiting?: string};
   resources: Resources;
@@ -947,6 +949,12 @@ function applyCommand(state: MatchState, c: Command, internal = false) {
     return;
   const p = state.players[c.playerId - 1];
   if (p.resigned || state.winner) return;
+  if (c.type === 'offline-cheat') {
+    const reason = applyOfflineCheat(state, c);
+    event(state, reason || `Offline cheat applied: ${c.cheat}.`, reason ? 'rejected' : 'order', p.id);
+    if (!reason && !internal) state.commandLog.push(structuredClone(c));
+    return;
+  }
   if (!internal) p.stats.commands++;
   if (!internal && issueUnitOrders(state, c)) {
     state.commandLog.push(structuredClone(c));
@@ -3136,8 +3144,13 @@ function checkVictory(state: MatchState) {
           e.progress === 10000 &&
           e.hp > 0 &&
           buildingById.get(e.kind)?.production.length,
+      ),
+      canRebuild = state.entities.some(
+        (e) => e.owner === p.id && e.category === 'unit' && e.hp > 0 && e.kind === 'worker',
       );
-    if (!hall && !production && state.tick > 600) {
+    // A surviving worker can restore the central hall and economy. Losing
+    // infrastructure alone must not eliminate that player's recovery chance.
+    if (!hall && !production && !canRebuild && state.tick > 600) {
       p.resigned = true;
       if (p.id === 1) state.winner = state.players.find((x) => x.id !== 1 && !x.resigned)?.id ?? 0;
     }
@@ -3174,6 +3187,7 @@ export function step(state: MatchState, commands: Command[]) {
 }
 
 export interface MatchSnapshot {
+  offlineCheats?: boolean;
   tick: number;
   winner: 0 | PlayerId | null;
   players: PlayerState[];
@@ -3191,6 +3205,7 @@ export function createSnapshot(state: MatchState, viewer: PlayerId, includeCheck
   for (const e of state.entities)
     if (e.garrisonedIn) occupants.set(e.garrisonedIn, (occupants.get(e.garrisonedIn) ?? 0) + 1);
   return {
+    offlineCheats: state.config.offlineCheats,
     tick: state.tick,
     winner: state.winner,
     players: structuredClone(

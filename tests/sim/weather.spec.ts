@@ -37,7 +37,10 @@ test('seeded fronts visit all six weather states with persistent deterministic t
 test('original ambience files are stereo 48kHz loops and long thunder variations, with valid hashes', () => {
   const root = 'apps/web/public/audio/atmosphere/',
     manifest = JSON.parse(readFileSync(root + 'manifest.json', 'utf8'));
-  expect(manifest.assets).toHaveLength(6);
+  expect(manifest.assets).toHaveLength(12);
+  expect(manifest.assets.map((asset: {id: string}) => asset.id)).toEqual(
+    expect.arrayContaining(['surf', 'wind', 'rain', 'birds', 'wolf', 'sheep', 'foliage', 'brook', 'insects']),
+  );
   for (const asset of manifest.assets) {
     const bytes = readFileSync(root + asset.file);
     expect(bytes.toString('ascii', 0, 4)).toBe('RIFF');

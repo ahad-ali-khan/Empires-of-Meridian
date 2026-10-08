@@ -10,7 +10,17 @@ export type Resources = Record<ResourceKind, number>;
 export type Difficulty = 'relaxed' | 'standard' | 'ruthless';
 export type Formation = 'line' | 'column' | 'spread' | 'square' | 'wedge' | 'loose';
 export type Stance = 'aggressive' | 'defensive' | 'stand-ground' | 'no-attack';
+export type OfflineCheat = 'resources' | 'tokens' | 'heal' | 'construction' | 'production' | 'reveal';
 export type Command =
+  | {
+      v: 1;
+      tick: number;
+      playerId: PlayerId;
+      sequence: number;
+      type: 'offline-cheat';
+      cheat: OfflineCheat;
+      entityIds: number[];
+    }
   | {
       v: 1;
       tick: number;
@@ -136,6 +146,8 @@ export interface MatchConfig {
   mapSize?: 'small' | 'medium' | 'large';
   fogOfWar?: boolean;
   aiCount?: 0 | 1 | 2 | 3;
+  /** Set only by the local match worker. Network hosts never accept this capability. */
+  offlineCheats?: boolean;
 }
 export interface SaveEnvelope {
   v: 1;

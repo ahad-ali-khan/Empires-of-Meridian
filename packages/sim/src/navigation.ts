@@ -22,6 +22,13 @@ const caches = new WeakMap<
   Map<number, {key: string; grid: Uint8Array; n: number; tick: number; count: number}>
 >();
 const terrainGrids = new WeakMap<MatchState, {size: number; seed: number; grid: Uint8Array}>();
+// Searches are synchronous and ordered by simulation entity ID. Reusing their
+// scratch storage removes large typed-array and heap-object allocations from
+// movement ticks without sharing authoritative paths or changing tie-breaking.
+const searchScratch = new WeakMap<
+  MatchState,
+  {n: number; parent: Int32Array; cost: Int32Array; closed: Uint8Array; heapIds: number[]; heapScores: number[]}
+>();
 export function invalidateNavigation(state: MatchState) {
   caches.delete(state);
 }
@@ -195,51 +202,76 @@ export function findPath(state: MatchState, e: Entity, x: number, z: number): [n
     sz = Math.floor(e.z / CELL),
     tx = Math.max(1, Math.min(n - 2, Math.floor(x / CELL))),
     tz = Math.max(1, Math.min(n - 2, Math.floor(z / CELL)));
+  let scratch = searchScratch.get(state);
+  if (!scratch || scratch.n !== n) {
+    scratch = {
+      n,
+      parent: new Int32Array(n * n),
+      cost: new Int32Array(n * n),
+      closed: new Uint8Array(n * n),
+      heapIds: [],
+      heapScores: [],
+    };
+    searchScratch.set(state, scratch);
+  }
   const start = sz * n + sx,
     goal = tz * n + tx,
-    parent = new Int32Array(n * n).fill(-1),
-    cost = new Int32Array(n * n).fill(2147483647),
-    closed = new Uint8Array(n * n);
+    {parent, cost, closed, heapIds, heapScores} = scratch;
+  parent.fill(-1);
+  cost.fill(2147483647);
+  closed.fill(0);
+  heapIds.length = 0;
+  heapScores.length = 0;
   const h = (id: number) => {
     const dx = Math.abs((id % n) - tx),
       dz = Math.abs(Math.floor(id / n) - tz);
     return 10 * Math.max(dx, dz) + 4 * Math.min(dx, dz);
   };
-  const heap: {id: number; score: number}[] = [];
   cost[start] = 0;
-  const less = (a: {id: number; score: number}, b: {id: number; score: number}) =>
-    a.score < b.score || (a.score === b.score && a.id < b.id);
+  const less = (a: number, b: number) =>
+    heapScores[a] < heapScores[b] || (heapScores[a] === heapScores[b] && heapIds[a] < heapIds[b]);
+  const swap = (a: number, b: number) => {
+    const id = heapIds[a],
+      score = heapScores[a];
+    heapIds[a] = heapIds[b];
+    heapScores[a] = heapScores[b];
+    heapIds[b] = id;
+    heapScores[b] = score;
+  };
   const push = (id: number) => {
-    heap.push({id, score: cost[id] + h(id)});
-    let i = heap.length - 1;
+    heapIds.push(id);
+    heapScores.push(cost[id] + h(id));
+    let i = heapIds.length - 1;
     while (i > 0) {
       const p = (i - 1) >> 1;
-      if (!less(heap[i], heap[p])) break;
-      [heap[i], heap[p]] = [heap[p], heap[i]];
+      if (!less(i, p)) break;
+      swap(i, p);
       i = p;
     }
   };
   const pop = () => {
-    const value = heap[0],
-      last = heap.pop()!;
-    if (heap.length) {
-      heap[0] = last;
+    const value = heapIds[0],
+      lastId = heapIds.pop()!,
+      lastScore = heapScores.pop()!;
+    if (heapIds.length) {
+      heapIds[0] = lastId;
+      heapScores[0] = lastScore;
       let i = 0;
       for (;;) {
         let c = i * 2 + 1;
-        if (c >= heap.length) break;
-        if (c + 1 < heap.length && less(heap[c + 1], heap[c])) c++;
-        if (!less(heap[c], heap[i])) break;
-        [heap[c], heap[i]] = [heap[i], heap[c]];
+        if (c >= heapIds.length) break;
+        if (c + 1 < heapIds.length && less(c + 1, c)) c++;
+        if (!less(c, i)) break;
+        swap(c, i);
         i = c;
       }
     }
-    return value.id;
+    return value;
   };
   push(start);
   let best = start,
     visits = 0;
-  while (heap.length && visits++ < Math.min(90000, n * n)) {
+  while (heapIds.length && visits++ < Math.min(90000, n * n)) {
     const id = pop();
     if (closed[id]) continue;
     closed[id] = 1;

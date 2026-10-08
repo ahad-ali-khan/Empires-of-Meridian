@@ -1,8 +1,10 @@
 import {alignWall, updateWallPreview} from './wall-view';
+import {setAudioListener} from '../audio';
+import {createForest} from './forest';
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {buildAsset, animateAsset, type AssetKind} from '../../../../../packages/asset-tools/src/models';
-import {setFoliageTime} from '../../../../../packages/asset-tools/src/nature';
+import {setFoliageTime, setResourceLevel} from '../../../../../packages/asset-tools/src/nature';
 import type {Clip} from '../../../../../packages/asset-tools/src/actors';
 import {placementReason, type MatchSnapshot} from '../../../../../packages/sim/src/index';
 import {buildingById, unitById, productionName} from '../../../../../packages/content/src/index';
@@ -46,6 +48,11 @@ type View = {
   sphere: T.Sphere;
   dynamic: boolean;
   occluded?: boolean;
+  lastAnimated: number;
+  matrixDirty: boolean;
+  labelKey: string;
+  occlusionBounds: T.Box3;
+  terrainVersion: number;
 };
 export class MatchRenderer {
   wallAnchor?: {x: number; z: number};
@@ -65,7 +72,10 @@ export class MatchRenderer {
     mesh: T.InstancedMesh;
     silhouette?: T.InstancedMesh;
     parts: {mesh: T.Mesh; view: View; parents: T.Object3D[]}[];
+    dynamic: boolean;
+    visibleKey: number;
   }[] = [];
+  private forest?: ReturnType<typeof createForest>;
   private batchDirty = false;
   private grass?: T.InstancedMesh;
   private waterDepth = new T.DataTexture(new Uint8Array(4), 1, 1);
@@ -92,7 +102,11 @@ export class MatchRenderer {
   private rallyMarkers = new T.Group();
   private rallyKey = '';
   private snapshot?: MatchSnapshot;
-  private down?: {x: number; y: number; button: number; shift: boolean};
+  private down?: {x: number; y: number; pointerId: number; shift: boolean; dragging: boolean};
+  private hovered?: number;
+  private cameraGesture?: number;
+  private hoverAt = 0;
+  private cursors = new Map<string, string>();
   private marquee = document.createElement('div');
   private ghost?: T.Group;
   private ghostFootprint?: T.Mesh<T.PlaneGeometry, T.MeshBasicMaterial>;
@@ -105,19 +119,33 @@ export class MatchRenderer {
   }
   private geometries = new Set<T.BufferGeometry>();
   private materials = new Set<T.Material>();
+  private sharedGeometries = new Set<T.BufferGeometry>();
+  private sharedMaterials = new Set<T.Material>();
+  private scratchForward = new T.Vector3();
+  private scratchRight = new T.Vector3();
+  private scratchMove = new T.Vector3();
+  private scratchPoint = new T.Vector3();
+  private scratchRotation = new T.Quaternion();
+  private entityById = new Map<number, MatchSnapshot['entities'][number]>();
+  private worldRecipeKey = '';
+  private baseGroundColors?: Float32Array;
+  private previousTerrainBuildings: MatchSnapshot['entities'] = [];
   private sun = new T.DirectionalLight('#ffe8c5', 3.1);
   private fill = new T.HemisphereLight('#c4d9ec', '#615e45', 1.05);
   private weather = '';
   private grassTime = {value: 0};
   private observer: ResizeObserver;
   private shadowTime = 0;
+  private audioTime = -1;
   private boundary = new T.Group();
   private terrainBuildings: MatchSnapshot['entities'] = [];
+  private terrainVersion = 0;
   constructor(
     private host: HTMLElement,
     private onSelect: (id: number, add: boolean, button: number) => void,
     private onGround: (x: number, z: number, button: number, queued?: boolean) => void,
     private onGroup: (ids: number[], add: boolean) => void = () => {},
+    private onError: (message: string) => void = () => {},
   ) {
     this.renderer = new T.WebGLRenderer({antialias: true, powerPreference: 'high-performance'});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -128,6 +156,9 @@ export class MatchRenderer {
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.02;
     this.renderer.outputColorSpace = T.SRGBColorSpace;
+    // Hidden source rigs feed instance batches. Update only changed visible
+    // rigs below instead of traversing every hidden limb every frame.
+    this.scene.matrixWorldAutoUpdate = false;
     this.skyProbe = makeSkyProbe(this.renderer);
     this.scene.environment = this.skyProbe.texture;
     this.scene.environmentIntensity = 0.32;
@@ -212,6 +243,9 @@ export class MatchRenderer {
     canvas.addEventListener('pointerdown', this.pointerDown);
     canvas.addEventListener('pointermove', this.pointerMove);
     canvas.addEventListener('pointerup', this.pointerUp);
+    canvas.addEventListener('pointercancel', this.cancelGesture);
+    canvas.addEventListener('lostpointercapture', this.cancelGesture);
+    canvas.addEventListener('pointerleave', this.pointerLeave);
     canvas.addEventListener('dblclick', this.doubleClick);
     canvas.addEventListener('contextmenu', this.preventMenu);
     window.addEventListener('keydown', this.keyDown);
@@ -220,6 +254,7 @@ export class MatchRenderer {
     this.observer = new ResizeObserver(this.resize);
     this.observer.observe(host);
     this.resize();
+    this.scene.updateMatrixWorld(true);
     this.tick();
   }
   private addGroundCover() {
@@ -271,8 +306,21 @@ export class MatchRenderer {
       }
     >();
     for (const [id, v] of this.views) {
-      const entity = this.snapshot?.entities.find((e) => e.id === id);
-      if (entity?.category !== 'unit' && entity?.category !== 'animal' && entity?.kind !== 'timber') continue;
+      const entity = this.entityById.get(id);
+      if (
+        !entity ||
+        (entity.category !== 'unit' && entity.category !== 'animal' && entity.category !== 'resource') ||
+        entity.kind === 'fish'
+      )
+        continue;
+      if (
+        entity.kind === 'timber' &&
+        entity.stumpSince === undefined &&
+        entity.amount >= (entity.initialAmount ?? entity.amount) * 0.5
+      ) {
+        v.model.visible = false;
+        continue;
+      }
       v.root.updateMatrixWorld(true);
       v.model.traverse((o) => {
         if (o instanceof T.Mesh) {
@@ -321,8 +369,52 @@ export class MatchRenderer {
         mesh.renderOrder = 2;
         this.scene.add(silhouette);
       }
-      this.actorBatches.push({mesh, silhouette, parts: group.parts});
+      this.actorBatches.push({
+        mesh,
+        silhouette,
+        parts: group.parts,
+        dynamic: group.parts.some((p) => p.view.dynamic),
+        visibleKey: -1,
+      });
     }
+    const trees: T.Group[] = [];
+    for (const [id, v] of this.views) {
+      const entity = this.entityById.get(id);
+      if (
+        entity?.kind !== 'timber' ||
+        entity.stumpSince !== undefined ||
+        entity.amount < (entity.initialAmount ?? entity.amount) * 0.5
+      )
+        continue;
+      v.root.userData.variant = entity.model === 'pine' ? 1 : 0;
+      trees.push(v.root);
+    }
+    if (!this.forest && trees.length) {
+      const variants = [buildAsset('tree'), buildAsset('pine')];
+      for (const variant of variants)
+        variant.traverse((o) => {
+          if (!(o instanceof T.Mesh)) return;
+          const source = o.material as T.Material,
+            local = source.clone();
+          local.onBeforeCompile = source.onBeforeCompile;
+          local.customProgramCacheKey = source.customProgramCacheKey;
+          o.material = local;
+        });
+      variants.forEach((v) => this.share(v));
+      this.forest = createForest(this.renderer, variants, [], {
+        capacity: 2048,
+        cullOutside: true,
+        light: this.sun,
+        fill: this.fill,
+      });
+      for (const variant of variants)
+        variant.traverse((o) => {
+          if (o instanceof T.Mesh) this.fogMaterial(o.material as T.Material);
+        });
+      for (const material of this.forest.materials) this.fogMaterial(material);
+      this.scene.add(this.forest.group);
+    }
+    this.forest?.setTrees(trees);
     this.batchDirty = false;
   }
   private height(x: number, z: number) {
@@ -344,7 +436,7 @@ export class MatchRenderer {
   private prepareGesture = (e: PointerEvent) => {
     if (e.button === 0) this.controls.mouseButtons.LEFT = e.altKey && !this.placing ? T.MOUSE.ROTATE : undefined;
   };
-  private fogMaterial(material: T.MeshStandardMaterial) {
+  private fogMaterial(material: T.Material) {
     const previous = material.userData.beforeFog ?? material.onBeforeCompile;
     material.userData.beforeFog = previous;
     material.onBeforeCompile = (shader, renderer) => {
@@ -365,7 +457,7 @@ export class MatchRenderer {
         'float vision=texture2D(visibilityMap,clamp(fogWorld/worldSize,0.,1.)).r;float clouds=.045+.015*sin(fogWorld.x*.22+fogClock*.12)*sin(fogWorld.y*.16-fogClock*.09);outgoingLight*=mix(clouds,1.,vision);\n#include <opaque_fragment>',
       );
     };
-    material.customProgramCacheKey = () => 'match-visibility-v2';
+    material.customProgramCacheKey = () => `match-visibility-v3:${previous.toString()}`;
     material.needsUpdate = true;
   }
   private updateFog(snapshot: MatchSnapshot) {
@@ -387,6 +479,12 @@ export class MatchRenderer {
     this.fogSize.value = this.worldSize;
   }
   private refreshGround() {
+    const recipeKey = `${this.seed}:${this.worldSize}`;
+    if (recipeKey === this.worldRecipeKey) {
+      this.patchFoundations();
+      return;
+    }
+    this.worldRecipeKey = recipeKey;
     const w = this.worldSize,
       geo = new T.PlaneGeometry(w, w, 280, 280);
     geo.rotateX(-Math.PI / 2);
@@ -406,13 +504,13 @@ export class MatchRenderer {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i),
         z = pos.getZ(i),
-        y = this.height(x, z);
+        y = terrainHeight(x, z, w, this.seed);
       const shore = coastAt(Math.round(z * 256), w * 256, this.seed) / 256 - x;
       pos.setY(i, y);
       const slope =
         Math.hypot(
-          this.height(x + 0.7, z) - this.height(x - 0.7, z),
-          this.height(x, z + 0.7) - this.height(x, z - 0.7),
+          terrainHeight(x + 0.7, z, w, this.seed) - terrainHeight(x - 0.7, z, w, this.seed),
+          terrainHeight(x, z + 0.7, w, this.seed) - terrainHeight(x, z - 0.7, w, this.seed),
         ) / 1.4;
       const c = landscapeColor(
         x,
@@ -421,7 +519,7 @@ export class MatchRenderer {
         slope,
         this.seed,
         shore,
-        laneDistance(x, z, lanes),
+        Infinity,
         terrainZone(Math.round(x * 256), Math.round(z * 256), w * 256, this.seed),
       );
       colors.push(c.r, c.g, c.b);
@@ -429,6 +527,7 @@ export class MatchRenderer {
     const groundMaterial = this.ground.material as T.MeshStandardMaterial;
     groundMaterial.map?.repeat.set(w / 3, w / 3);
     geo.setAttribute('color', new T.Float32BufferAttribute(colors, 3));
+    this.baseGroundColors = Float32Array.from(colors);
     geo.computeVertexNormals();
     this.ground.geometry.dispose();
     this.ground.geometry = geo;
@@ -476,6 +575,7 @@ export class MatchRenderer {
       this.boundary.add(wall);
     }
     if (!this.boundary.parent) this.scene.add(this.boundary);
+    this.boundary.updateMatrixWorld(true);
     this.fogMaterial(this.ground.material as T.MeshStandardMaterial);
     if (this.grass) {
       const matrix = new T.Matrix4(),
@@ -506,8 +606,85 @@ export class MatchRenderer {
       this.grass.frustumCulled = false;
       this.fogMaterial(this.grass.material as T.MeshStandardMaterial);
     }
+    this.previousTerrainBuildings = [];
+    this.patchFoundations();
+  }
+  private patchFoundations() {
+    if (!this.baseGroundColors) return;
+    const current = this.terrainBuildings.filter((e) => !e.wallAxis),
+      previous = this.previousTerrainBuildings,
+      keys = new Set(current.map((e) => `${e.id}:${e.progress === 10000}`)),
+      oldKeys = new Set(previous.map((e) => `${e.id}:${e.progress === 10000}`)),
+      changed = [
+        ...previous.filter((e) => !keys.has(`${e.id}:${e.progress === 10000}`)),
+        ...current.filter((e) => !oldKeys.has(`${e.id}:${e.progress === 10000}`)),
+      ];
+    if (!changed.length) return;
+    const dirty: {minX: number; minZ: number; maxX: number; maxZ: number}[] = [],
+      lanes: Lane[] = [];
+    for (const e of changed) {
+      const [hx, hz] = halfBounds(e);
+      dirty.push({
+        minX: (e.x - hx) / 256 - 2,
+        minZ: (e.z - hz) / 256 - 2,
+        maxX: (e.x + hx) / 256 + 2,
+        maxZ: (e.z + hz) / 256 + 2,
+      });
+    }
+    for (const set of [previous, current])
+      for (const b of set) {
+        if (b.progress < 10000 || ['hall', 'farm', 'wall', 'gate'].includes(b.kind)) continue;
+        const hall = set.find((e) => e.kind === 'hall' && e.owner === b.owner);
+        if (!hall || Math.hypot(hall.x - b.x, hall.z - b.z) >= 32 * 256) continue;
+        const lane: Lane = [hall.x / 256, hall.z / 256, b.x / 256, b.z / 256];
+        if (set === current) lanes.push(lane);
+        if (changed.some((e) => e.id === b.id || e.id === hall.id))
+          dirty.push({
+            minX: Math.min(lane[0], lane[2]) - 2,
+            minZ: Math.min(lane[1], lane[3]) - 2,
+            maxX: Math.max(lane[0], lane[2]) + 2,
+            maxZ: Math.max(lane[1], lane[3]) + 2,
+          });
+      }
+    const pos = this.ground.geometry.attributes.position,
+      color = this.ground.geometry.attributes.color,
+      pathColor = new T.Color('#b3a07b'),
+      c = new T.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i),
+        z = pos.getZ(i);
+      if (!dirty.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ)) continue;
+      pos.setY(i, this.height(x, z));
+      c.fromArray(this.baseGroundColors, i * 3);
+      c.lerp(pathColor, (1 - T.MathUtils.smoothstep(laneDistance(x, z, lanes), 0.65, 1.8)) * 0.55);
+      color.setXYZ(i, c.r, c.g, c.b);
+    }
+    pos.needsUpdate = color.needsUpdate = true;
+    this.ground.geometry.computeVertexNormals();
+    if (this.grass) {
+      const matrix = new T.Matrix4();
+      for (let i = 0; i < this.grass.count; i++) {
+        this.grass.getMatrixAt(i, matrix);
+        const x = matrix.elements[12],
+          z = matrix.elements[14];
+        if (!dirty.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ)) continue;
+        const blocked =
+          current.some((e) => {
+            const [hx, hz] = halfBounds(e);
+            return Math.abs(x - e.x / 256) < hx / 256 + 0.3 && Math.abs(z - e.z / 256) < hz / 256 + 0.3;
+          }) || !landAt(Math.round(x * 256), Math.round(z * 256), this.worldSize * 256, this.seed);
+        matrix.elements[13] = this.height(x, z);
+        matrix.elements[5] = blocked ? 0 : matrix.elements[5] || 0.8;
+        this.grass.setMatrixAt(i, matrix);
+      }
+      this.grass.instanceMatrix.needsUpdate = true;
+    }
+    this.previousTerrainBuildings = current;
+    this.renderer.shadowMap.needsUpdate = true;
   }
   private cursor(kind: string) {
+    const cached = this.cursors.get(kind);
+    if (cached) return cached;
     const paths: Record<string, string> = {
       mine: 'M9 29L24 7M8 8Q20 0 30 15M19 6L29 15',
       chop: 'M10 30L22 6M19 9L29 10L26 22L15 18Z',
@@ -527,7 +704,9 @@ export class MatchRenderer {
       '" fill="none" stroke="#14271c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="' +
       path +
       '" fill="none" stroke="#f8db92" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") 8 8, crosshair';
+    const cursor = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") 8 8, crosshair';
+    this.cursors.set(kind, cursor);
+    return cursor;
   }
   feedback(id: number) {
     const v = this.views.get(id);
@@ -553,6 +732,7 @@ export class MatchRenderer {
     }
     this.scene.add(root);
     this.markers.push({root, expires: this.time + (rally ? 4 : 1.2)});
+    root.updateMatrixWorld(true);
   }
   cameraFootprint() {
     const ray = new T.Raycaster(),
@@ -595,13 +775,24 @@ export class MatchRenderer {
       frameCpuMs: this.frameCpu,
       medianFrameMs: [...this.frameTimes].sort((a, b) => a - b)[Math.floor(this.frameTimes.length / 2)] ?? 0,
       projectiles: this.shots.size,
+      ownedGeometries: this.geometries.size,
+      ownedMaterials: this.materials.size,
+      distantTrees:
+        this.forest?.group.children.reduce(
+          (count, o) =>
+            count + (o instanceof T.InstancedMesh && o.material instanceof T.MeshBasicMaterial ? o.count : 0),
+          0,
+        ) ?? 0,
+      weatherLook: {...this.environment.look},
     };
   }
   private blur = () => {
     this.keys.clear();
-    this.down = undefined;
-    this.marquee.hidden = true;
+    this.cancelGesture();
   };
+  weatherAudioTransition() {
+    return this.environment.audioTransition;
+  }
   private keyDown = (e: KeyboardEvent) => {
     if (!/input|textarea|select/i.test((e.target as Element)?.tagName || '')) {
       this.keys.add(e.code);
@@ -623,55 +814,120 @@ export class MatchRenderer {
     this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, 1 - ((e.clientY - r.top) / r.height) * 2);
     this.ray.setFromCamera(this.pointer, this.camera);
   }
-  private hit(e: MouseEvent) {
+  private hit(e: MouseEvent, ordering = false) {
     this.setRay(e);
-    const r = this.renderer.domElement.getBoundingClientRect();
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const candidates = [...this.views.values()].filter((v) => {
+      const entity = this.entityById.get(v.proxy.userData.entityId);
+      return (
+        v.onScreen &&
+        entity &&
+        entity.garrisonedIn === undefined &&
+        !(entity.category === 'unit' && entity.hp <= 0 && entity.incapacitatedAt === undefined)
+      );
+    });
+    const score = (id: number) => {
+      const p = this.projectEntity(id);
+      return p ? Math.hypot(p.x + rect.left - e.clientX, p.y + rect.top - e.clientY) : Infinity;
+    };
     const hits = this.ray.intersectObjects(
-      [...this.views.values()].filter((v) => v.onScreen).map((v) => v.proxy),
+      candidates.filter((v) => this.ray.ray.intersectsSphere(v.sphere)).map((v) => v.proxy),
       false,
     );
-    const score = (hit: T.Intersection) => {
-      const p = this.projectEntity(hit.object.userData.entityId);
-      return p ? Math.hypot(p.x + r.left - e.clientX, p.y + r.top - e.clientY) + hit.distance * 0.015 : Infinity;
-    };
-    const exact = hits.sort((a, b) => score(a) - score(b))[0]?.object.userData.entityId as number | undefined;
-    if (exact !== undefined) return exact;
-    let best: number | undefined,
-      distance = 18;
-    for (const entity of this.snapshot?.entities ?? []) {
+    // Mobile targets remain clickable through scenery. A small screen-space capsule
+    // also makes moving animals and a silhouette behind a roof easy to acquire.
+    let assisted: number | undefined,
+      distance = 14;
+    for (const v of candidates) {
+      const entity = this.entityById.get(v.proxy.userData.entityId)!;
       if (entity.remembered || (entity.category !== 'unit' && entity.category !== 'animal')) continue;
-      const v = this.views.get(entity.id);
-      if (!v) continue;
-      const p = v.root.position
+      if (ordering && entity.owner === 1 && this.selected.has(entity.id)) continue;
+      const base = v.root.position
         .clone()
-        .add(new T.Vector3(0, 1, 0))
+        .add(new T.Vector3(0, 0.35, 0))
         .project(this.camera);
-      if (p.z < 0 || p.z > 1) continue;
-      const d = Math.hypot(
-        ((p.x + 1) * r.width) / 2 + r.left - e.clientX,
-        ((1 - p.y) * r.height) / 2 + r.top - e.clientY,
+      const top = v.root.position
+        .clone()
+        .add(new T.Vector3(0, Math.max(1, v.proxy.position.y * 1.7), 0))
+        .project(this.camera);
+      if (base.z < -1 || base.z > 1 || top.z < -1 || top.z > 1) continue;
+      const ax = ((base.x + 1) * rect.width) / 2 + rect.left,
+        ay = ((1 - base.y) * rect.height) / 2 + rect.top;
+      const bx = ((top.x + 1) * rect.width) / 2 + rect.left,
+        by = ((1 - top.y) * rect.height) / 2 + rect.top;
+      const t = T.MathUtils.clamp(
+        ((e.clientX - ax) * (bx - ax) + (e.clientY - ay) * (by - ay)) / Math.max(1, (bx - ax) ** 2 + (by - ay) ** 2),
+        0,
+        1,
       );
+      const d = Math.hypot(e.clientX - (ax + (bx - ax) * t), e.clientY - (ay + (by - ay) * t));
       if (d < distance) {
         distance = d;
-        best = entity.id;
+        assisted = entity.id;
       }
     }
-    return best;
+    if (assisted !== undefined) return assisted;
+    const exact = hits.sort((a, b) => score(a.object.userData.entityId) - score(b.object.userData.entityId))[0];
+    return exact?.object.userData.entityId as number | undefined;
   }
+  private setHovered(id?: number) {
+    if (id === this.hovered) return;
+    const old = this.views.get(this.hovered ?? -1);
+    if (old) old.ring.userData.hovered = false;
+    this.hovered = id;
+    const next = this.views.get(id ?? -1);
+    if (next) {
+      next.ring.userData.hovered = true;
+      next.ring.visible = true;
+    }
+  }
+  private cancelGesture = () => {
+    this.down = undefined;
+    this.cameraGesture = undefined;
+    this.marquee.hidden = true;
+    this.setHovered();
+    this.renderer.domElement.style.cursor = this.ordering ? 'crosshair' : 'default';
+  };
+  private pointerLeave = () => {
+    if (!this.down) this.setHovered();
+  };
   private pointerDown = (e: PointerEvent) => {
-    if (e.button === 1) return;
-    if (e.button === 0 && this.controls.mouseButtons.LEFT === T.MOUSE.ROTATE) {
-      this.down = undefined;
+    this.renderer.domElement.focus();
+    this.setHovered();
+    if (e.button === 1 || (e.button === 0 && this.controls.mouseButtons.LEFT === T.MOUSE.ROTATE)) {
+      this.cancelGesture();
+      this.cameraGesture = e.pointerId;
+      this.renderer.domElement.style.cursor = 'grabbing';
       return;
     }
-    this.renderer.domElement.focus();
-    this.down = {x: e.clientX, y: e.clientY, button: e.button, shift: e.shiftKey};
+    if (e.button === 2) {
+      e.preventDefault();
+      this.dispatchPointer(e, 2, e.shiftKey);
+      return;
+    }
+    if (e.button !== 0) return;
+    this.down = {x: e.clientX, y: e.clientY, pointerId: e.pointerId, shift: e.shiftKey, dragging: false};
     this.renderer.domElement.setPointerCapture(e.pointerId);
   };
+  private dispatchPointer(e: MouseEvent, button: number, shift: boolean) {
+    if (!this.placing) {
+      const id = this.hit(e, button === 2 || this.ordering);
+      if (id !== undefined) {
+        this.onSelect(id, shift, button);
+        return;
+      }
+    }
+    this.setRay(e);
+    const hit = this.ray.intersectObject(this.ground)[0];
+    if (hit) this.onGround(hit.point.x, hit.point.z, button, shift);
+  }
   private pointerMove = (e: PointerEvent) => {
+    if (this.cameraGesture !== undefined) return;
     if (!this.down && !this.placing) {
-      const id = this.hit(e),
-        entity = this.snapshot?.entities.find((x) => x.id === id),
+      if (performance.now() - this.hoverAt < 30) return;
+      this.hoverAt = performance.now();
+      const id = this.hit(e, this.selected.size > 0 || this.ordering),
+        entity = this.entityById.get(id ?? -1),
         selected = this.snapshot?.entities.filter((x) => this.selected.has(x.id) && x.owner === 1) ?? [],
         worker = selected.some((x) => x.kind === 'worker');
       const type =
@@ -712,13 +968,14 @@ export class MatchRenderer {
                                 : undefined
                       : undefined
           : undefined;
+      this.setHovered(id);
       this.renderer.domElement.style.cursor = this.ordering
         ? 'crosshair'
         : type
           ? this.cursor(type)
           : id
             ? 'pointer'
-            : 'grab';
+            : 'default';
     }
     if (this.ghost) {
       this.setRay(e);
@@ -785,7 +1042,9 @@ export class MatchRenderer {
       }
     }
     const d = this.down;
-    if (!d || d.button !== 0 || this.placing || Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) return;
+    if (!d || e.pointerId !== d.pointerId || this.placing) return;
+    d.dragging ||= Math.hypot(e.clientX - d.x, e.clientY - d.y) >= 7;
+    if (!d.dragging) return;
     const r = this.host.getBoundingClientRect();
     this.marquee.hidden = false;
     Object.assign(this.marquee.style, {
@@ -796,65 +1055,75 @@ export class MatchRenderer {
     });
   };
   private pointerUp = (e: PointerEvent) => {
+    this.cameraGesture = undefined;
     const d = this.down;
+    if (!d || e.pointerId !== d.pointerId) {
+      this.renderer.domElement.style.cursor = this.ordering ? 'crosshair' : 'default';
+      return;
+    }
     this.down = undefined;
     this.marquee.hidden = true;
-    if (!d) return;
-    const moved = Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5;
-    if (d.button === 0 && moved && !this.placing) {
-      const r = this.renderer.domElement.getBoundingClientRect(),
-        ids: number[] = [];
+    if (this.renderer.domElement.hasPointerCapture(e.pointerId))
+      this.renderer.domElement.releasePointerCapture(e.pointerId);
+    if (d.dragging && !this.placing) {
+      const rect = this.renderer.domElement.getBoundingClientRect(),
+        ids: number[] = [],
+        sheep: number[] = [];
       for (const entity of this.snapshot?.entities ?? []) {
-        if (entity.owner !== 1 || entity.category !== 'unit') continue;
+        if (
+          entity.owner !== 1 ||
+          entity.hp <= 0 ||
+          entity.garrisonedIn !== undefined ||
+          (entity.category !== 'unit' && entity.kind !== 'sheep')
+        )
+          continue;
         const v = this.views.get(entity.id);
-        if (!v) continue;
+        if (!v?.onScreen) continue;
         const p = v.root.position
             .clone()
             .add(new T.Vector3(0, 1, 0))
             .project(this.camera),
-          x = r.left + ((p.x + 1) * r.width) / 2,
-          y = r.top + ((1 - p.y) * r.height) / 2;
+          x = rect.left + ((p.x + 1) * rect.width) / 2,
+          y = rect.top + ((1 - p.y) * rect.height) / 2;
         if (
+          p.z >= -1 &&
           p.z < 1 &&
           x >= Math.min(d.x, e.clientX) &&
           x <= Math.max(d.x, e.clientX) &&
           y >= Math.min(d.y, e.clientY) &&
           y <= Math.max(d.y, e.clientY)
         )
-          ids.push(entity.id);
+          (entity.kind === 'sheep' ? sheep : ids).push(entity.id);
       }
-      this.onGroup(ids, d.shift);
+      this.onGroup(ids.length ? ids : sheep, d.shift);
       return;
     }
-    if (moved) return;
-    if (!this.placing) {
-      const id = this.hit(e);
-      if (id) {
-        this.onSelect(id, e.shiftKey, e.button);
-        if (e.button === 2) this.feedback(id);
-        return;
-      }
-    }
-    this.setRay(e);
-    const hit = this.ray.intersectObject(this.ground)[0];
-    if (hit) {
-      this.onGround(hit.point.x, hit.point.z, e.button, e.shiftKey);
-      if (e.button === 2) this.mark(hit.point.x, hit.point.z);
-    }
+    this.dispatchPointer(e, 0, d.shift);
   };
   private doubleClick = (e: MouseEvent) => {
+    if (this.placing || this.ordering || e.altKey || e.button !== 0) return;
     const id = this.hit(e),
-      entity = this.snapshot?.entities.find((x) => x.id === id);
+      entity = this.entityById.get(id ?? -1);
     if (!entity || entity.owner !== 1) return;
     this.onGroup(
       (this.snapshot?.entities ?? [])
-        .filter(
-          (x) =>
-            x.owner === 1 &&
-            x.kind === entity.kind &&
-            (this.views.get(x.id)?.root.position.clone().project(this.camera).length() ?? Infinity) < 1.75,
-        )
-        .map((x) => x.id),
+        .filter((candidate) => {
+          if (
+            candidate.owner !== 1 ||
+            candidate.kind !== entity.kind ||
+            candidate.hp <= 0 ||
+            candidate.garrisonedIn !== undefined
+          )
+            return false;
+          const view = this.views.get(candidate.id);
+          if (!view?.onScreen) return false;
+          const p = view.root.position
+            .clone()
+            .add(new T.Vector3(0, 1, 0))
+            .project(this.camera);
+          return p.z >= -1 && p.z < 1 && Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1;
+        })
+        .map((candidate) => candidate.id),
       e.shiftKey,
     );
   };
@@ -1008,28 +1277,44 @@ export class MatchRenderer {
   }
   private remember(root: T.Object3D) {
     root.traverse((o) => {
-      if (o instanceof T.Mesh) {
+      if (o instanceof T.Mesh || o instanceof T.Line) {
         this.geometries.add(o.geometry);
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) this.materials.add(m);
       }
     });
   }
+  private share(root: T.Object3D) {
+    root.traverse((o) => {
+      if (!(o instanceof T.Mesh)) return;
+      this.sharedGeometries.add(o.geometry);
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) this.sharedMaterials.add(m);
+    });
+    this.remember(root);
+  }
+  private release(root: T.Object3D) {
+    const geometry = new Set<T.BufferGeometry>(),
+      material = new Set<T.Material>();
+    root.traverse((o) => {
+      if (!(o instanceof T.Mesh) && !(o instanceof T.Line)) return;
+      if (!this.sharedGeometries.has(o.geometry)) geometry.add(o.geometry);
+      for (const m of Array.isArray(o.material) ? o.material : [o.material])
+        if (!this.sharedMaterials.has(m)) material.add(m);
+    });
+    geometry.forEach((g) => {
+      g.dispose();
+      this.geometries.delete(g);
+    });
+    material.forEach((m) => {
+      m.dispose();
+      this.materials.delete(m);
+    });
+  }
   update(snapshot: MatchSnapshot) {
     this.snapshot = snapshot;
+    this.entityById = new Map(snapshot.entities.map((e) => [e.id, e]));
     if (this.weather !== snapshot.map.weather) {
       this.weather = snapshot.map.weather;
       this.environment.setWeather(snapshot.map.weather);
-      const rainy = ['rain', 'overcast', 'mist', 'storm'].includes(snapshot.map.weather),
-        storm = snapshot.map.weather === 'storm',
-        mist = snapshot.map.weather === 'mist';
-      this.sun.intensity = storm ? 0.45 : mist ? 0.85 : rainy ? 1.15 : 3.1;
-      this.sun.color.set(rainy ? '#d6e2ed' : '#ffe8c5');
-      this.fill.intensity = rainy ? 1.25 : 1.05;
-      this.scene.fog = new T.FogExp2(
-        storm ? '#536571' : mist ? '#afbfc0' : rainy ? '#809b9e' : '#bacdc6',
-        mist ? 0.01 : storm ? 0.007 : rainy ? 0.005 : 0.0024,
-      );
-      this.renderer.shadowMap.needsUpdate = true;
     }
 
     this.terrainBuildings = snapshot.entities.filter((e) => e.category === 'building' && e.hp > 0);
@@ -1040,10 +1325,7 @@ export class MatchRenderer {
       ':' +
       snapshot.map.size +
       ':' +
-      snapshot.entities
-        .filter((e) => e.category === 'building')
-        .map((e) => e.id)
-        .join();
+      this.terrainBuildings.map((e) => `${e.id}:${e.progress === 10000}`).join();
     if (worldKey !== this.worldKey) {
       const first = !this.worldKey;
       this.worldKey = worldKey;
@@ -1054,6 +1336,7 @@ export class MatchRenderer {
         (_, i) => coastAt(Math.trunc((i * snapshot.map.size) / 8), snapshot.map.size, this.seed) / 256,
       );
       this.refreshGround();
+      this.terrainVersion++;
       if (first) {
         const hall = snapshot.entities.find((e) => e.owner === 1 && e.kind === 'hall');
         if (hall) this.focus(hall.x / 256, hall.z / 256);
@@ -1064,10 +1347,10 @@ export class MatchRenderer {
     this.frustum.setFromProjectionMatrix(
       this.projection.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse),
     );
-    const byId = new Map(snapshot.entities.map((e) => [e.id, e]));
+    const byId = this.entityById;
     const live = new Set(snapshot.entities.map((e) => e.id));
     for (const e of snapshot.entities) {
-      const age = e.tradeSite ? 2 : Math.min(4, snapshot.players[Math.max(0, e.owner - 1)]?.age ?? 1);
+      const age = e.tradeSite ? 2 : e.owner ? Math.min(4, snapshot.players[e.owner - 1]?.age ?? 1) : 1;
       const stateKey = [
         e.model,
         e.incapacitatedAt !== undefined ? 'incapacitated' : 'active',
@@ -1098,7 +1381,7 @@ export class MatchRenderer {
       if (!v && !this.frustum.intersectsSphere(new T.Sphere(new T.Vector3(e.x / 256, 5, e.z / 256), 30))) continue;
       if (v && v.stateKey !== stateKey) {
         this.scene.remove(v.root);
-        this.remember(v.root);
+        this.release(v.root);
         this.views.delete(e.id);
         v.label.remove();
         v = undefined;
@@ -1115,6 +1398,7 @@ export class MatchRenderer {
           }
           if (e.category === 'building' && !e.wallAxis) proto = prepareBuildingView(proto, e.kind) ?? proto;
           this.templates.set(key, proto);
+          this.share(proto);
         }
         const model = proto.clone();
         model.traverse((o) => {
@@ -1173,6 +1457,8 @@ export class MatchRenderer {
                       e.owner > 1 ? ['#000000', '#267f70', '#8f3d38', '#3f65b5', '#985eaf'][e.owner] : '#9a8a66',
                     );
                     this.ownerMaterials.set(key, n);
+                    this.sharedMaterials.add(n);
+                    this.materials.add(n);
                   }
                   return n;
                 }
@@ -1272,13 +1558,28 @@ export class MatchRenderer {
           yaw: 0,
           phase: 0,
           walked: 0,
+          lastAnimated: -1,
+          matrixDirty: true,
+          labelKey: '',
+          occlusionBounds: new T.Box3(),
+          terrainVersion: this.terrainVersion,
         };
         this.views.set(e.id, v);
         this.renderer.shadowMap.needsUpdate = true;
       }
       v.model.userData.attackStart = e.attackStart;
       v.model.userData.attackCooldown = unitById.get(e.kind)?.cooldown ?? 35;
-      v.target.set(e.x / 256, e.kind === 'fish' ? 0.06 : this.height(e.x / 256, e.z / 256), e.z / 256);
+      if (v.x !== e.x || v.z !== e.z || v.terrainVersion !== this.terrainVersion) {
+        v.target.set(e.x / 256, e.kind === 'fish' ? 0.06 : this.height(e.x / 256, e.z / 256), e.z / 256);
+        v.terrainVersion = this.terrainVersion;
+      }
+      if (e.kind === 'coin' || e.kind === 'metal') {
+        const chunks = Math.ceil((e.amount / Math.max(1, e.initialAmount ?? e.amount)) * 12);
+        if (v.model.userData.resourceChunks !== chunks) {
+          setResourceLevel(v.model, (e.amount / Math.max(1, e.initialAmount ?? e.amount)) * 100);
+          v.model.userData.resourceChunks = chunks;
+        }
+      }
       const dx = e.x - v.x,
         dz = e.z - v.z,
         moving = !!e.moving;
@@ -1353,19 +1654,23 @@ export class MatchRenderer {
       const queue = e.queue[0];
       v.label.hidden = !!e.remembered || e.owner !== 1 || (!queue && e.progress === 10000);
       if (!v.label.hidden) {
-        v.label.replaceChildren();
-        const title = document.createElement('span');
-        title.textContent = queue
-          ? productionName(queue.kind) + ' · ' + Math.ceil(queue.remaining / 20) + 's'
-          : 'Constructing · ' + Math.floor(e.progress / 100) + '%';
-        const progress = document.createElement('progress');
-        progress.max = queue?.total ?? 10000;
-        progress.value = queue ? queue.total - queue.remaining : e.progress;
-        v.label.append(title, progress);
-        if (e.queue.length > 1) {
-          const list = document.createElement('small');
-          list.textContent = e.queue.map((q, i) => `${i + 1}. ${productionName(q.kind)}`).join(' · ');
-          v.label.append(list);
+        const labelKey = `${queue?.kind}:${queue && Math.ceil(queue.remaining / 20)}:${Math.floor(e.progress / 100)}:${e.queue.map((q) => q.kind).join(',')}`;
+        if (labelKey !== v.labelKey) {
+          v.labelKey = labelKey;
+          v.label.replaceChildren();
+          const title = document.createElement('span');
+          title.textContent = queue
+            ? productionName(queue.kind) + ' · ' + Math.ceil(queue.remaining / 20) + 's'
+            : 'Constructing · ' + Math.floor(e.progress / 100) + '%';
+          const progress = document.createElement('progress');
+          progress.max = queue?.total ?? 10000;
+          progress.value = queue ? queue.total - queue.remaining : e.progress;
+          v.label.append(title, progress);
+          if (e.queue.length > 1) {
+            const list = document.createElement('small');
+            list.textContent = e.queue.map((q, i) => `${i + 1}. ${productionName(q.kind)}`).join(' · ');
+            v.label.append(list);
+          }
         }
       }
     }
@@ -1373,7 +1678,7 @@ export class MatchRenderer {
       if (!live.has(id)) {
         this.scene.remove(v.root);
         v.label.remove();
-        this.remember(v.root);
+        this.release(v.root);
         this.views.delete(id);
         this.batchDirty = true;
         this.renderer.shadowMap.needsUpdate = true;
@@ -1383,31 +1688,38 @@ export class MatchRenderer {
     for (const shot of snapshot.projectiles) {
       let model = this.shots.get(shot.id);
       if (!model) {
-        model = new T.Group();
+        const templateKey = `projectile:${shot.kind}`;
+        let template = this.templates.get(templateKey);
+        if (!template) {
+          template = new T.Group();
+          if (shot.kind === 'shell') {
+            template.add(
+              new T.Mesh(
+                new T.SphereGeometry(0.12, 8, 6),
+                new T.MeshStandardMaterial({color: '#363c38', metalness: 0.4}),
+              ),
+            );
+          } else {
+            const shaft = new T.Mesh(
+              new T.CylinderGeometry(0.012, 0.012, 0.7, 5),
+              new T.MeshStandardMaterial({color: '#735339'}),
+            );
+            shaft.rotation.x = Math.PI / 2;
+            const tip = new T.Mesh(new T.ConeGeometry(0.04, 0.13, 4), new T.MeshStandardMaterial({color: '#c6cbc0'}));
+            tip.rotation.x = Math.PI / 2;
+            tip.position.z = 0.4;
+            template.add(shaft, tip);
+          }
+          this.templates.set(templateKey, template);
+          this.share(template);
+        }
+        model = template.clone();
         const source = this.views.get(shot.sourceId),
           muzzle = source?.model.getObjectByName('shotOrigin');
         if (muzzle) {
-          const p = muzzle.getWorldPosition(new T.Vector3());
+          const p = muzzle.getWorldPosition(this.scratchPoint);
           model.userData.launchHeight = p.y;
           model.userData.launchOffset = [p.x - (shot.startX ?? shot.x) / 256, p.z - (shot.startZ ?? shot.z) / 256];
-        }
-        if (shot.kind === 'shell') {
-          model.add(
-            new T.Mesh(
-              new T.SphereGeometry(0.12, 8, 6),
-              new T.MeshStandardMaterial({color: '#363c38', metalness: 0.4}),
-            ),
-          );
-        } else {
-          const shaft = new T.Mesh(
-            new T.CylinderGeometry(0.012, 0.012, 0.7, 5),
-            new T.MeshStandardMaterial({color: '#735339'}),
-          );
-          shaft.rotation.x = Math.PI / 2;
-          const tip = new T.Mesh(new T.ConeGeometry(0.04, 0.13, 4), new T.MeshStandardMaterial({color: '#c6cbc0'}));
-          tip.rotation.x = Math.PI / 2;
-          tip.position.z = 0.4;
-          model.add(shaft, tip);
         }
         this.scene.add(model);
         this.shots.set(shot.id, model);
@@ -1418,23 +1730,30 @@ export class MatchRenderer {
     for (const [id, m] of this.shots)
       if (!shotIds.has(id)) {
         this.scene.remove(m);
-        this.remember(m);
+        this.release(m);
         this.shots.delete(id);
       }
   }
   private tick = () => {
+    try {
+      this.renderFrame();
+    } catch (error) {
+      this.onError(error instanceof Error ? error.message : 'The battlefield could not be rendered.');
+    }
+  };
+  private renderFrame = () => {
     const now = performance.now(),
       dt = Math.min(0.05, (now - this.last) / 1000);
     this.frameTimes.push(now - this.last);
     if (this.frameTimes.length > 120) this.frameTimes.shift();
     this.last = now;
     this.time += dt;
-    const forward = new T.Vector3();
+    const forward = this.scratchForward;
     this.camera.getWorldDirection(forward);
     forward.y = 0;
     forward.normalize();
-    const right = new T.Vector3().crossVectors(forward, new T.Vector3(0, 1, 0)),
-      move = new T.Vector3();
+    const right = this.scratchRight.set(-forward.z, 0, forward.x),
+      move = this.scratchMove.set(0, 0, 0);
     if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) move.add(forward);
     if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) move.sub(forward);
     if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) move.sub(right);
@@ -1442,7 +1761,7 @@ export class MatchRenderer {
     move.multiplyScalar(dt * 24);
     this.camera.position.add(move);
     this.controls.target.add(move);
-    const correction = new T.Vector3(
+    const correction = this.scratchPoint.set(
       T.MathUtils.clamp(this.controls.target.x, 2, this.worldSize - 2) - this.controls.target.x,
       0,
       T.MathUtils.clamp(this.controls.target.z, 2, this.worldSize - 2) - this.controls.target.z,
@@ -1454,7 +1773,7 @@ export class MatchRenderer {
     for (const marker of [...this.markers])
       if (this.time > marker.expires) {
         this.scene.remove(marker.root);
-        this.remember(marker.root);
+        this.release(marker.root);
         this.markers.splice(this.markers.indexOf(marker), 1);
       }
     for (const model of this.shots.values()) {
@@ -1469,7 +1788,7 @@ export class MatchRenderer {
           0,
           1,
         );
-      const target = this.snapshot?.entities.find((e) => e.id === shot.targetId),
+      const target = this.entityById.get(shot.targetId),
         targetHeight =
           this.height((shot.targetX ?? shot.x) / 256, (shot.targetZ ?? shot.z) / 256) +
           (target?.category === 'animal' ? 0.7 : target?.category === 'building' ? 2 : 1.2),
@@ -1482,6 +1801,7 @@ export class MatchRenderer {
       );
       model.lookAt((shot.targetX ?? shot.x) / 256, targetHeight, (shot.targetZ ?? shot.z) / 256);
       model.visible = t < shot.impactTick;
+      model.updateMatrixWorld(true);
     }
     this.camera.updateMatrixWorld();
     this.frustum.setFromProjectionMatrix(
@@ -1491,39 +1811,60 @@ export class MatchRenderer {
     const checkOcclusion = this.time - this.occlusionAt > 0.15;
     if (checkOcclusion) this.occlusionAt = this.time;
     const occluders = checkOcclusion
-      ? [...this.views.values()].filter((v) => v.onScreen && !v.proxy.userData.unit).map((v) => v.proxy)
+      ? [...this.views.values()]
+          .filter((v) => v.onScreen && !v.proxy.userData.unit)
+          .map((v) => {
+            if (!v.proxy.geometry.boundingBox) v.proxy.geometry.computeBoundingBox();
+            return v.occlusionBounds.copy(v.proxy.geometry.boundingBox!).applyMatrix4(v.proxy.matrixWorld);
+          })
       : [];
     for (const v of this.views.values()) {
       v.sphere.center.copy(v.target);
       v.sphere.center.y += v.sphere.radius * 0.45;
       v.onScreen = this.frustum.intersectsSphere(v.sphere);
       v.root.visible = v.onScreen;
+      v.root.userData.lodVisible = v.onScreen;
       if (!v.onScreen) {
         v.label.style.visibility = 'hidden';
         continue;
       }
       const oldX = v.root.position.x,
-        oldZ = v.root.position.z;
+        oldZ = v.root.position.z,
+        oldY = v.root.position.y;
       v.root.position.lerp(v.target, blend);
       v.walked += Math.hypot(v.root.position.x - oldX, v.root.position.z - oldZ);
       if (checkOcclusion && v.proxy.userData.unit) {
-        const center = v.root.position.clone().add(new T.Vector3(0, 1.2, 0));
-        const direction = center.clone().sub(this.camera.position),
+        const center = this.scratchForward.copy(v.root.position);
+        center.y += 1.2;
+        const direction = this.scratchRight.copy(center).sub(this.camera.position),
           distance = direction.length();
-        const ray = new T.Raycaster(this.camera.position, direction.normalize(), 0, Math.max(0, distance - 0.5));
-        v.occluded = ray.intersectObjects(occluders, false).length > 0;
+        this.ray.ray.set(this.camera.position, direction.normalize());
+        v.occluded = occluders.some((box) => {
+          const hit = this.ray.ray.intersectBox(box, this.scratchPoint);
+          return !!hit && hit.distanceToSquared(this.camera.position) < (distance - 0.5) ** 2;
+        });
         if (!v.occluded)
           for (let i = 1; i < 12; i++) {
-            const p = center.clone().lerp(this.camera.position, i / 12);
+            const p = this.scratchPoint.copy(center).lerp(this.camera.position, i / 12);
             if (terrainHeight(p.x, p.z, this.worldSize, this.seed) > p.y) {
               v.occluded = true;
               break;
             }
           }
       }
-      v.root.rotation.y += Math.atan2(Math.sin(v.yaw - v.root.rotation.y), Math.cos(v.yaw - v.root.rotation.y)) * blend;
+      const rotationChange =
+        Math.atan2(Math.sin(v.yaw - v.root.rotation.y), Math.cos(v.yaw - v.root.rotation.y)) * blend;
+      v.root.rotation.y += rotationChange;
+      v.matrixDirty =
+        v.matrixDirty ||
+        Math.abs(oldX - v.root.position.x) +
+          Math.abs(oldZ - v.root.position.z) +
+          Math.abs(oldY - v.root.position.y) +
+          Math.abs(rotationChange) >
+          0.00001;
       if (v.ragdoll) v.ragdoll.update(dt);
       else if (v.model.userData.shoal) {
+        v.matrixDirty = true;
         const cycle = Math.floor(this.time / 5);
         const count = 1 + Math.floor(random(v.proxy.userData.entityId + cycle * 131)() * 3);
         for (const [index, fish] of v.model.children.entries()) {
@@ -1559,12 +1900,27 @@ export class MatchRenderer {
               : motion.contact +
                 Math.min(0.999, (elapsed - 0.4) / (data.attackCooldown / 20)) * (motion.period - motion.contact);
         }
-        animateAsset(v.model, motionTime, v.clip);
+        const pixels =
+            (v.sphere.radius * this.host.clientHeight) /
+            (Math.tan(T.MathUtils.degToRad(this.camera.fov / 2)) *
+              Math.max(1, this.camera.position.distanceTo(v.root.position))),
+          interval = pixels > 100 ? 0 : pixels > 40 ? 1 / 30 : 1 / 15;
+        if (this.time - v.lastAnimated >= interval) {
+          animateAsset(v.model, motionTime, v.clip);
+          v.lastAnimated = this.time;
+          v.matrixDirty = true;
+        }
       }
-      for (const name of ['projectile', 'shotFlash'])
-        v.model.getObjectByName(name)?.traverse((o) => (o.visible = false));
-      v.ring.visible = this.selected.has(v.proxy.userData.entityId) || (v.ring.userData.flashUntil ?? 0) > this.time;
-      v.health.quaternion.copy(v.root.quaternion.clone().invert().multiply(this.camera.quaternion));
+      v.ring.visible =
+        this.selected.has(v.proxy.userData.entityId) ||
+        !!v.ring.userData.hovered ||
+        (v.ring.userData.flashUntil ?? 0) > this.time;
+      if (v.health.visible) {
+        v.health.quaternion.copy(
+          this.scratchRotation.copy(v.root.quaternion).invert().multiply(this.camera.quaternion),
+        );
+        v.health.updateMatrixWorld();
+      }
       if (!v.label.hidden) {
         const p = v.root.position
           .clone()
@@ -1579,8 +1935,23 @@ export class MatchRenderer {
         v.label.style.visibility = p.z > 1 || p.z < -1 ? 'hidden' : 'visible';
       }
     }
-    for (const v of this.views.values()) if (v.onScreen) v.root.updateMatrixWorld(true);
+    for (const v of this.views.values())
+      if (v.onScreen && (v.matrixDirty || v.ragdoll)) {
+        v.root.updateMatrixWorld(true);
+        v.matrixDirty = false;
+      }
     for (const batch of this.actorBatches) {
+      let visibleKey = 0;
+      if (!batch.dynamic) {
+        for (const part of batch.parts)
+          if (part.view.onScreen)
+            visibleKey = Math.imul(
+              visibleKey ^ part.view.proxy.userData.entityId ^ (part.view.model.userData.resourceChunks ?? 0),
+              16777619,
+            );
+        if (visibleKey === batch.visibleKey) continue;
+        batch.visibleKey = visibleKey;
+      }
       let count = 0;
       let silhouetteCount = 0;
       for (const part of batch.parts)
@@ -1598,14 +1969,38 @@ export class MatchRenderer {
       }
       batch.mesh.instanceMatrix.needsUpdate = true;
     }
-    this.grassTime.value = this.time * this.environment.wind.value;
+    this.grassTime.value += dt * this.environment.wind.value;
     setFoliageTime(this.time, this.environment.wind.value);
     effectsTime.value = this.time;
     this.environment.update((this.snapshot?.tick ?? 0) / 20 + Math.min(0.05, this.time - this.receivedAt), this.camera);
-    if (this.time - this.shadowTime > 0.1) {
+    this.environment.group.updateMatrixWorld();
+    this.ghost?.updateMatrixWorld(true);
+    const weatherLook = this.environment.look;
+    this.sun.intensity = weatherLook.sun;
+    this.sun.color.setRGB(weatherLook.sunR, weatherLook.sunG, weatherLook.sunB);
+    this.fill.intensity = weatherLook.fill;
+    const fog = this.scene.fog as T.FogExp2;
+    fog.color.setRGB(weatherLook.fogR, weatherLook.fogG, weatherLook.fogB);
+    fog.density = weatherLook.density;
+    this.forest?.setLighting(this.sun, this.fill);
+    this.forest?.update(this.camera, this.renderer.domElement.height);
+    if (this.time - this.audioTime > 0.25) {
+      const direction = this.camera.getWorldDirection(this.scratchForward);
+      setAudioListener({
+        x: this.camera.position.x,
+        y: this.camera.position.y,
+        z: this.camera.position.z,
+        yaw: Math.atan2(direction.x, direction.z),
+      });
+      this.audioTime = this.time;
+    }
+    const wideView = this.camera.position.distanceTo(this.controls.target) > 85;
+    if (this.time - this.shadowTime > (wideView ? 0.35 : 0.15)) {
       const p = this.controls.target;
       this.sun.position.set(p.x - 32, 62, p.z + 28);
       this.sun.target.position.set(p.x, 0, p.z);
+      this.sun.updateMatrixWorld();
+      this.sun.target.updateMatrixWorld();
       this.renderer.shadowMap.needsUpdate = true;
       this.shadowTime = this.time;
     }
@@ -1619,6 +2014,10 @@ export class MatchRenderer {
     this.waterDepth.dispose();
     this.observer.disconnect();
     this.controls.dispose();
+    if (this.forest) {
+      this.scene.remove(this.forest.group);
+      this.forest.dispose();
+    }
     window.removeEventListener('keydown', this.keyDown);
     window.removeEventListener('keyup', this.keyUp);
     window.removeEventListener('blur', this.blur);
